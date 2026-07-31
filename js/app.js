@@ -10,12 +10,14 @@ const App = {
     document.documentElement.setAttribute('data-theme', settings.theme || 'dark');
 
     // Init DB (auto-detects Supabase if configured)
+    Storage.migrate(); // Convert old IDs to UUIDs
     await DB.init();
-    if (DB.isCloud()) {
+    await Auth.init();
+    // Sync AFTER auth is ready — only if user is logged in
+    if (DB.isCloud() && Auth.getUser()) {
       await Storage.syncFromCloud();
       Storage.listenToCloud();
     }
-    await Auth.init();
 
     document.getElementById('themeToggle').addEventListener('click', () => {
       const cur = document.documentElement.getAttribute('data-theme');

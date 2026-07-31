@@ -6,9 +6,60 @@ const Storage = {
   _load(k) { try { return JSON.parse(localStorage.getItem(k)) || []; } catch(e) { return []; } },
   _save(k,d) { try { localStorage.setItem(k, JSON.stringify(d)); } catch(e) { Utils.showToast('Storage penuh!','error'); } },
 
+  /* Convert old-format IDs (id_xxxx) to valid UUIDs */
+  _migrateIds(arr) {
+    let changed = false;
+    const oldToNew = {};
+    for (const item of arr) {
+      if (item.id && item.id.startsWith('id_')) {
+        const newId = Utils.genId();
+        oldToNew[item.id] = newId;
+        item.id = newId;
+        changed = true;
+      }
+    }
+    return { changed, oldToNew };
+  },
+
+  /* Run migration once on init */
+  migrate() {
+    const migrated = localStorage.getItem('ep2_migrated_v3');
+    if (migrated) return;
+
+    // Migrate requests + build ID map
+    const reqs = this._load('ep2_requests');
+    const reqResult = this._migrateIds(reqs);
+    if (reqResult.changed) this._save('ep2_requests', reqs);
+
+    // Migrate tasks + fix requestId refs
+    const tasks = this._load('ep2_tasks');
+    const taskResult = this._migrateIds(tasks);
+    for (const t of tasks) {
+      if (t.requestId && reqResult.oldToNew[t.requestId]) {
+        t.requestId = reqResult.oldToNew[t.requestId];
+        taskResult.changed = true;
+      }
+    }
+    if (taskResult.changed) this._save('ep2_tasks', tasks);
+
+    // Migrate estimates + fix taskId refs
+    const ests = this._load('ep2_estimates');
+    const estResult = this._migrateIds(ests);
+    for (const e of ests) {
+      if (e.taskId && taskResult.oldToNew[e.taskId]) {
+        e.taskId = taskResult.oldToNew[e.taskId];
+        estResult.changed = true;
+      }
+    }
+    if (estResult.changed) this._save('ep2_estimates', ests);
+
+    localStorage.setItem('ep2_migrated_v3', '1');
+    console.log('🔄 ID migration complete');
+  },
+
   /* ---- Cloud background sync ---- */
   _cloudPush(op, data) {
-    if (!DB.isCloud()) return;
+    if (!DB.isCloud() || !Auth.getUser()) return; // Must be logged in
     // Fire & forget — don't block UI
     (async () => {
       try {
@@ -23,6 +74,21 @@ const Storage = {
         else if (op === 'delEst') await DB.deleteEstimate(data.id);
       } catch(e) { console.warn('Cloud sync error:', e.message); }
     })();
+  },
+
+  /* Push all local data to cloud (call after login) */
+  async pushLocalToCloud() {
+    if (!DB.isCloud() || !Auth.getUser()) return;
+    try {
+      const reqs = this.getRequests();
+      const tasks = this.getTasks();
+      const ests = this.getEstimates();
+      let pushed = 0;
+      for (const r of reqs) { try { await DB.addRequest(r); pushed++; } catch(e) { /* dup ok */ } }
+      for (const t of tasks) { try { await DB.addTask(t); pushed++; } catch(e) { /* dup ok */ } }
+      for (const e of ests) { try { await DB.addEstimate(e); pushed++; } catch(e) { /* dup ok */ } }
+      if (pushed) console.log('📤 Pushed', pushed, 'local items to cloud');
+    } catch(e) { console.warn('Push local failed:', e.message); }
   },
 
   /* Pull all cloud data into localStorage */

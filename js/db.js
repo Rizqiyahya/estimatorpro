@@ -75,7 +75,7 @@ const DB = {
       scope_ms: r.scopeMS || false,
       note: r.note || '',
       status: r.status || 'open',
-      created_by: this._getUserId()
+      created_by: await this._getUserId()
     };
     const { data, error } = await this._supabase.from('requests').insert(row).select().single();
     if (error) throw error;
@@ -142,7 +142,7 @@ const DB = {
       priority: t.priority || 'Normal',
       pipeline_status: t.pipelineStatus || 'todo',
       boq_link: t.boqLink || '',
-      created_by: this._getUserId()
+      created_by: await this._getUserId()
     };
     const { data } = await this._supabase.from('tasks').insert(row).select().single();
     return { ...data, requestId: data.request_id, subjectRequest: data.subject_request, subjectTask: data.subject_task, requestBy: data.request_by, endUser: data.end_user, scopePL: data.scope_pl, scopePS: data.scope_ps, scopeMS: data.scope_ms, pipelineStatus: data.pipeline_status, boqLink: data.boq_link };
@@ -197,7 +197,7 @@ const DB = {
       task_id: e.taskId, item: e.item || '', category: e.category || 'utama',
       quantity: e.quantity || null, unit: e.unit || '',
       unit_price: e.unitPrice || null, total_price: e.totalPrice || null,
-      notes: e.notes || '', created_by: this._getUserId()
+      notes: e.notes || '', created_by: await this._getUserId()
     };
     const { data } = await this._supabase.from('estimates').insert(row).select().single();
     return { ...data, taskId: data.task_id, unitPrice: data.unit_price, totalPrice: data.total_price };
@@ -229,9 +229,9 @@ const DB = {
   },
 
   /* ---- Utils ---- */
-  _getUserId() {
+  async _getUserId() {
     if (this._mode === 'supabase' && this._supabase) {
-      return this._supabase.auth.getUser()?.id || null;
+      try { const { data: { session } } = await this._supabase.auth.getSession(); return session?.user?.id || null; } catch(e) { return null; }
     }
     return null;
   }

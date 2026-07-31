@@ -93,6 +93,10 @@ const Auth = {
     }
 
     this._user = data.user;
+    // Sync: push any local data to cloud, then pull latest from cloud
+    await Storage.pushLocalToCloud();
+    await Storage.syncFromCloud();
+    Storage.listenToCloud();
     App.closeModal();
     Utils.showToast('Signed in as ' + data.user.email, 'success');
     App.renderView(); // Refresh everything
@@ -121,6 +125,9 @@ const Auth = {
 
     if (data.user && data.session) {
       this._user = data.user;
+      await Storage.pushLocalToCloud();
+      await Storage.syncFromCloud();
+      Storage.listenToCloud();
       App.closeModal();
       Utils.showToast('Account created! Welcome, ' + data.user.email, 'success');
       App.renderView();
