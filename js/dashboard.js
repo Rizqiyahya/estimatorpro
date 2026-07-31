@@ -1,8 +1,38 @@
 /* ============================================================
-   EstimatorPro v3 — Dashboard (DAL: High Contrast & Interactivity)
+   EstimatorPro v3 — Dashboard (DAL: Pie Chart + High Contrast)
    ============================================================ */
 
 const Dashboard = {
+  /* ---- SVG Donut Chart ---- */
+  _donut(data, colors, size) {
+    const total = data.reduce((s, d) => s + d.value, 0) || 1;
+    const cx = size / 2, cy = size / 2, r = size / 2 - 16, sw = 20;
+    const circ = 2 * Math.PI * r;
+    let offset = 0;
+    let segments = '';
+    data.forEach((d, i) => {
+      if (d.value === 0) return;
+      const dash = (d.value / total) * circ;
+      const dashArr = `${dash} ${circ - dash}`;
+      segments += `<circle r="${r}" cx="${cx}" cy="${cy}" fill="none" stroke="${colors[i]}" stroke-width="${sw}" stroke-dasharray="${dashArr}" stroke-dashoffset="${-offset}" stroke-linecap="butt" transform="rotate(-90 ${cx} ${cy})" />`;
+      offset += dash;
+    });
+    // Center text
+    const centerText = total > 0 ? `${Math.round((data[0]?.value||0)/total*100)}%` : '—';
+    return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" class="donut-chart">${segments}<text x="${cx}" y="${cy}" text-anchor="middle" dy="0.35em" class="donut-center">${centerText}</text></svg>`;
+  },
+
+  /* ---- Legend ---- */
+  _legend(items, colors) {
+    return items.map((item, i) => `
+      <div class="legend-item">
+        <span class="legend-dot" style="background:${colors[i]}"></span>
+        <span class="legend-label">${item.label}</span>
+        <span class="legend-value">${item.value}</span>
+      </div>
+    `).join('');
+  },
+
   render() {
     const reqs = Storage.getRequests();
     const tasks = Storage.getTasks();
@@ -18,7 +48,7 @@ const Dashboard = {
     const done = tasks.filter(t => t.pipelineStatus === 'done').length;
     const revisi = tasks.filter(t => t.pipelineStatus === 'revisi').length;
 
-    // Pipeline
+    // Pipeline counts
     const pipes = {
       todo: tasks.filter(t => t.pipelineStatus === 'todo').length,
       in_progress: tasks.filter(t => t.pipelineStatus === 'in_progress').length,
@@ -33,17 +63,16 @@ const Dashboard = {
     tasks.forEach(t => { const r = reqs.find(rr => rr.id === t.requestId); if (r && divs[r.division] !== undefined) divs[r.division]++; });
     const maxDiv = Math.max(...Object.values(divs), 1);
 
-    // 7-day activity
+    // 7-day
     const wkAgo = new Date(Date.now() - 7*24*60*60*1000);
     const newThisWeek = reqs.filter(r => new Date(r.createdAt) >= wkAgo).length;
     const doneThisWeek = tasks.filter(t => t.pipelineStatus === 'done' && new Date(t.updatedAt) >= wkAgo).length;
-
-    // High priority count
     const highPrio = tasks.filter(t => t.priority === 'High').length;
 
-    // Recent activity items
+    // Recent activity
     const recent = tasks.filter(t => new Date(t.updatedAt) >= wkAgo).sort((a,b) => new Date(b.updatedAt) - new Date(a.updatedAt)).slice(0, 5);
 
+    // Pipeline bar items
     const pipeItems = [
       { key:'todo', label:'To Do', color:'var(--pipe-todo)', count:pipes.todo },
       { key:'in_progress', label:'In Progress', color:'var(--pipe-inprog)', count:pipes.in_progress },
@@ -51,6 +80,22 @@ const Dashboard = {
       { key:'done', label:'Done', color:'var(--pipe-done)', count:pipes.done },
       { key:'revisi', label:'Revisi', color:'var(--pipe-revisi)', count:pipes.revisi }
     ];
+
+    // Donut: Request Status
+    const reqStatus = [
+      { value: win, label: 'Win' },
+      { value: open, label: 'Open' },
+      { value: lose, label: 'Lose' }
+    ];
+    const reqColors = ['var(--green)', 'var(--blue)', 'var(--red)'];
+
+    // Donut: Division
+    const divData = [
+      { value: divs.NETCO, label: 'NETCO' },
+      { value: divs.OMG, label: 'OMG' },
+      { value: divs.ITSOL, label: 'ITSOL' }
+    ];
+    const divColors = ['var(--netco)', 'var(--omg)', 'var(--itsol)'];
 
     const html = `
       <div class="page-header">
@@ -60,7 +105,7 @@ const Dashboard = {
         </div>
       </div>
 
-      <!-- KPI Row — High Contrast Anchoring -->
+      <!-- KPI Row -->
       <div class="kpi-grid">
         <div class="kpi-card">
           <div class="kpi-label">Total Requests</div>
@@ -80,40 +125,68 @@ const Dashboard = {
         <div class="kpi-card">
           <div class="kpi-label">7-Day Activity</div>
           <div class="kpi-value" style="font-size:1.6rem">+${newThisWeek} / ✓${doneThisWeek}</div>
-          <div class="kpi-sub">New requests / Tasks completed</div>
+          <div class="kpi-sub">New requests / Tasks done</div>
         </div>
       </div>
 
-      <!-- Pipeline + Division -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <!-- Row 2: Pipeline + Request Status Donut -->
+      <div class="dash-grid-2">
         <div class="card">
           <div class="card-header">
             <h3 class="card-title">Pipeline Status</h3>
             <span style="font-size:0.76rem;color:var(--text-muted)">${totalTasks} total tasks</span>
           </div>
-          <div class="pipeline-bar" style="margin-bottom:16px">
+          <div class="pipeline-bar">
             ${pipeItems.map(p => {
               const pct = (p.count / totalPipe) * 100;
               return pct > 0 ? `<div class="pipeline-segment ${p.key}" style="width:${pct}%" title="${p.label}: ${p.count}"></div>` : '';
             }).join('')}
           </div>
           ${pipeItems.map(p => `
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;font-size:0.85rem">
+            <div class="pipe-legend-row">
               <div style="display:flex;align-items:center;gap:10px">
-                <span style="width:10px;height:10px;border-radius:2px;background:${p.color};display:inline-block;flex-shrink:0"></span>
-                <span style="color:var(--text-primary)">${p.label}</span>
+                <span class="pipe-dot" style="background:${p.color}"></span>
+                <span class="pipe-label">${p.label}</span>
               </div>
-              <span style="font-weight:700;font-family:var(--font-mono);font-size:0.9rem;color:var(--text-primary)">${p.count}</span>
+              <span class="pipe-count">${p.count}</span>
             </div>
           `).join('')}
         </div>
 
         <div class="card">
           <div class="card-header">
-            <h3 class="card-title">Task by Division</h3>
+            <h3 class="card-title">Request Status</h3>
+            <span style="font-size:0.76rem;color:var(--text-muted)">${totalReq} requests</span>
+          </div>
+          <div class="donut-wrap">
+            ${this._donut(reqStatus, reqColors, 160)}
+            <div class="donut-legend">
+              ${this._legend(reqStatus, reqColors)}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 3: Division Donut + Bar -->
+      <div class="dash-grid-2">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Tasks by Division</h3>
             <span style="font-size:0.76rem;color:var(--text-muted)">${totalTasks} tasks</span>
           </div>
-          <div class="bar-chart" style="margin-top:4px">
+          <div class="donut-wrap">
+            ${this._donut(divData, divColors, 160)}
+            <div class="donut-legend">
+              ${this._legend(divData, divColors)}
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Division Breakdown</h3>
+          </div>
+          <div class="bar-chart" style="margin-top:8px">
             ${[
               { div:'NETCO', color:'netco', col:'var(--netco)' },
               { div:'OMG', color:'omg', col:'var(--omg)' },
@@ -134,50 +207,42 @@ const Dashboard = {
               `;
             }).join('')}
           </div>
+          <div style="margin-top:20px;display:flex;gap:16px;font-size:0.82rem">
+            <div style="flex:1;text-align:center;padding:10px;background:var(--bg-input);border-radius:8px">
+              <div style="color:var(--text-muted)">High Priority</div>
+              <div style="font-size:1.5rem;font-weight:700;color:var(--red)">${highPrio}</div>
+            </div>
+            <div style="flex:1;text-align:center;padding:10px;background:var(--bg-input);border-radius:8px">
+              <div style="color:var(--text-muted)">Done This Week</div>
+              <div style="font-size:1.5rem;font-weight:700;color:var(--green)">${doneThisWeek}</div>
+            </div>
+            <div style="flex:1;text-align:center;padding:10px;background:var(--bg-input);border-radius:8px">
+              <div style="color:var(--text-muted)">Win Rate</div>
+              <div style="font-size:1.5rem;font-weight:700;color:var(--accent)">${winRate}%</div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- Bottom: Priority + Recent -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-        <div class="card">
-          <div class="card-header"><h3 class="card-title">Priority & Request Status</h3></div>
-          <div style="display:flex;gap:24px;align-items:center;padding:4px 0">
-            <div style="text-align:center;flex:1">
-              <div style="font-size:2rem;font-weight:700;color:var(--red)">${highPrio}</div>
-              <div style="font-size:0.78rem;color:var(--text-secondary);margin-top:2px">High Priority</div>
-            </div>
-            <div style="width:1px;height:40px;background:var(--border)"></div>
-            <div style="text-align:center;flex:1">
-              <div style="font-size:2rem;font-weight:700;color:var(--text-primary)">${tasks.length - highPrio}</div>
-              <div style="font-size:0.78rem;color:var(--text-secondary);margin-top:2px">Normal</div>
-            </div>
+      <!-- Row 4: Recent Activity -->
+      <div class="card">
+        <div class="card-header"><h3 class="card-title">Recent Activity (7 Days)</h3></div>
+        ${recent.length === 0 ? '<p style="color:var(--text-muted);font-size:0.84rem;text-align:center;padding:20px">No recent activity</p>' : `
+          <div class="recent-list">
+            ${recent.map(t => {
+              const req = reqs.find(r => r.id === t.requestId);
+              const ago = Math.max(0, Math.floor((Date.now() - new Date(t.updatedAt)) / (1000*60*60*24)));
+              return `
+                <div class="recent-row">
+                  <span class="recent-div" style="color:${Utils.divColor(req?.division)}">${req?.division||'—'}</span>
+                  <span class="recent-subject">${Utils.escapeHtml(Utils.truncate(t.subjectTask,40))}</span>
+                  ${Utils.pipeBadge(t.pipelineStatus)}
+                  <span class="recent-ago">${ago}d ago</span>
+                </div>
+              `;
+            }).join('')}
           </div>
-          <div style="margin-top:14px;display:flex;gap:12px;font-size:0.82rem">
-            <span class="badge badge-blue">${open} Open</span>
-            <span class="badge badge-green">${win} Win</span>
-            <span class="badge badge-red">${lose} Lose</span>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header"><h3 class="card-title">Recent Activity (7 Days)</h3></div>
-          ${recent.length === 0 ? '<p style="color:var(--text-muted);font-size:0.84rem;text-align:center;padding:20px">No recent activity</p>' : `
-            <div style="display:flex;flex-direction:column;gap:8px;font-size:0.83rem">
-              ${recent.map(t => {
-                const req = reqs.find(r => r.id === t.requestId);
-                const ago = Math.max(0, Math.floor((Date.now() - new Date(t.updatedAt)) / (1000*60*60*24)));
-                return `
-                  <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border-light)">
-                    <span style="color:${Utils.divColor(req?.division)};font-weight:600;font-size:0.72rem;width:44px">${req?.division||'—'}</span>
-                    <span style="flex:1">${Utils.escapeHtml(Utils.truncate(t.subjectTask,30))}</span>
-                    ${Utils.pipeBadge(t.pipelineStatus)}
-                    <span style="color:var(--text-muted);font-size:0.7rem;white-space:nowrap">${ago}d ago</span>
-                  </div>
-                `;
-              }).join('')}
-            </div>
-          `}
-        </div>
+        `}
       </div>
     `;
     return html;

@@ -106,6 +106,38 @@ const App = {
     }
   },
 
+  renderSidebarUser() {
+    const card = document.getElementById('sidebarUser');
+    if (!card) return;
+
+    if (DB.isCloud() && Auth.getUser()) {
+      const u = Auth.getUser();
+      const email = u.email || '';
+      const name = u.user_metadata?.name || email.split('@')[0] || 'User';
+      const initial = name.charAt(0).toUpperCase();
+
+      document.getElementById('sidebarAvatar').textContent = initial;
+      document.getElementById('sidebarAvatar').classList.remove('muted');
+      document.getElementById('sidebarUserName').textContent = name;
+      document.getElementById('sidebarUserEmail').textContent = email;
+      document.getElementById('sidebarLogout').style.display = '';
+      card.style.display = 'flex';
+      card.classList.remove('clickable');
+      document.getElementById('sidebarLogout').onclick = (e) => { e.stopPropagation(); Auth.logout(); };
+    } else if (DB.isCloud()) {
+      document.getElementById('sidebarAvatar').textContent = '?';
+      document.getElementById('sidebarAvatar').classList.add('muted');
+      document.getElementById('sidebarUserName').textContent = 'Not signed in';
+      document.getElementById('sidebarUserEmail').textContent = 'Click to sign in';
+      document.getElementById('sidebarLogout').style.display = 'none';
+      card.style.display = 'flex';
+      card.classList.add('clickable');
+      card.onclick = () => App.showLoginGate();
+    } else {
+      card.style.display = 'none';
+    }
+  },
+
   renderView() {
     const main = document.getElementById('mainContent');
     const views = {
