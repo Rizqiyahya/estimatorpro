@@ -60,9 +60,9 @@ const DB = {
 
   async addRequest(r) {
     if (this._mode === 'local') return Storage.addRequest(r);
-    const all = await this.getRequests();
     const row = {
-      no_id: all.length + 1,
+      id: r.id || undefined,
+      no_id: r.noId || 1,
       date: r.date || new Date().toISOString().split('T')[0],
       subject: r.subject || '',
       email_by: r.emailBy || '',
@@ -127,6 +127,7 @@ const DB = {
   async addTask(t) {
     if (this._mode === 'local') return Storage.addTask(t);
     const row = {
+      id: t.id || undefined,
       request_id: t.requestId,
       date: t.date || new Date().toISOString().split('T')[0],
       subject_request: t.subjectRequest || '',
@@ -192,6 +193,7 @@ const DB = {
   async addEstimate(e) {
     if (this._mode === 'local') return Storage.addEstimate(e);
     const row = {
+      id: e.id || undefined,
       task_id: e.taskId, item: e.item || '', category: e.category || 'utama',
       quantity: e.quantity || null, unit: e.unit || '',
       unit_price: e.unitPrice || null, total_price: e.totalPrice || null,

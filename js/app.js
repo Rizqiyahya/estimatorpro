@@ -11,6 +11,10 @@ const App = {
 
     // Init DB (auto-detects Supabase if configured)
     await DB.init();
+    if (DB.isCloud()) {
+      await Storage.syncFromCloud();
+      Storage.listenToCloud();
+    }
     await Auth.init();
 
     document.getElementById('themeToggle').addEventListener('click', () => {
