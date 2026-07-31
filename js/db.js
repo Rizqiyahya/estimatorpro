@@ -10,24 +10,28 @@ const DB = {
 
   /* ---- Init ---- */
   async init() {
+    // Hardcoded Supabase config — works on any PC without manual setup
+    const SUPABASE_URL = 'https://utvewmncpzibfetdfhat.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV0dmV3bW5jcHppYmZldGRmaGF0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0MzQ4NjEsImV4cCI6MjEwMTAxMDg2MX0.IQemxJvjb8ZISkAGoiFfkJoHgyIUgZK5Z6jVQfJaPbo';
+
+    // Allow Settings page override
     const settings = Storage.getSettings();
-    if (settings.supabaseUrl && settings.supabaseKey) {
-      try {
-        // Load Supabase from CDN if not already loaded
-        if (!window.supabase) {
-          await this._loadScript('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js');
-        }
-        this._supabase = window.supabase.createClient(settings.supabaseUrl, settings.supabaseKey);
-        this._mode = 'supabase';
-        console.log('✅ DB mode: Supabase cloud');
-        return true;
-      } catch (e) {
-        console.warn('Supabase init failed, falling back to localStorage:', e.message);
-        this._mode = 'local';
+    const url = settings.supabaseUrl || SUPABASE_URL;
+    const key = settings.supabaseKey || SUPABASE_KEY;
+
+    try {
+      if (!window.supabase) {
+        await this._loadScript('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js');
       }
+      this._supabase = window.supabase.createClient(url, key);
+      this._mode = 'supabase';
+      console.log('✅ DB mode: Supabase cloud');
+      return true;
+    } catch (e) {
+      console.warn('Supabase init failed, falling back to localStorage:', e.message);
+      this._mode = 'local';
+      return false;
     }
-    console.log('📦 DB mode: localStorage');
-    return false;
   },
 
   _loadScript(src) {
