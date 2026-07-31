@@ -29,11 +29,11 @@
   to { opacity: 1; transform: translateY(0); }
 }
 .login-brand {
-  display: flex; align-items: center; justify-content: center; gap: 10px;
+  display: flex; align-items: center; justify-content: center;
   font-size: 1.6rem; font-weight: 800; color: var(--text-primary);
   letter-spacing: -0.5px;
 }
-.login-logo { font-size: 2rem; }
+.login-logo-img { height: 64px; max-width: 100%; }
 .login-subtitle {
   text-align: center; font-size: 0.8rem; color: var(--text-muted);
   margin-top: 4px;
@@ -177,6 +177,7 @@ input,select,textarea{font-family:inherit;font-size:inherit}
 .sidebar{width:var(--sidebar-width);height:100vh;position:fixed;left:0;top:0;background:var(--bg-sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:100;transition:transform var(--transition)}
 .sidebar-brand{display:flex;align-items:center;gap:10px;padding:18px 16px;border-bottom:1px solid var(--border)}
 .brand-icon{font-size:1.4rem}
+.brand-logo{width:38px;height:38px;object-fit:contain;flex-shrink:0}
 .brand-text{font-weight:700;font-size:0.95rem;letter-spacing:-0.3px;color:var(--text-primary)}
 .brand-sub{font-size:0.62rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-top:1px}
 .sidebar-nav{flex:1;display:flex;flex-direction:column;gap:1px;padding:8px;overflow-y:auto}
