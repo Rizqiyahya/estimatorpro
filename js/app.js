@@ -148,16 +148,12 @@ const App = {
 
   showLoginGate() {
     const gate = document.getElementById('loginGate');
-    const app = document.getElementById('appContainer');
     if (gate) gate.style.display = 'flex';
-    if (app) app.style.display = 'none';
   },
 
   hideLoginGate() {
     const gate = document.getElementById('loginGate');
-    const app = document.getElementById('appContainer');
     if (gate) gate.style.display = 'none';
-    if (app) app.style.display = 'flex';
   }
 };
 

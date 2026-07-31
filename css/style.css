@@ -86,8 +86,6 @@
   background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3);
   border-radius: 6px; color: #ef4444; font-size: 0.8rem;
 }
-.app-container { display: flex; min-height: 100vh; }
-
 :root, [data-theme="dark"] {
   --bg-base: #0d0d0d;
   --bg-primary: #111111;
