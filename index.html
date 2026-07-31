@@ -9,6 +9,54 @@
 </head>
 <body>
 
+  <!-- ========== LOGIN GATE ========== -->
+  <div id="loginGate" class="login-gate">
+    <div class="login-card">
+      <div class="login-brand">
+        <span class="login-logo">📐</span>
+        <span>EstimatorPro</span>
+      </div>
+      <div class="login-subtitle">PT. Starcom Solusindo</div>
+      <div class="login-divider">
+        <span class="login-dot netco"></span>
+        <span class="login-dot omg"></span>
+        <span class="login-dot itsol"></span>
+      </div>
+
+      <!-- Login Form -->
+      <form id="lgLoginForm" class="login-form" autocomplete="on">
+        <label class="login-label">Email</label>
+        <input type="email" name="email" placeholder="contoh@starcoms.net" required autocomplete="email" class="login-input">
+        <label class="login-label">Password</label>
+        <input type="password" name="password" placeholder="••••••" required autocomplete="current-password" class="login-input">
+        <div class="login-error" id="lgLoginError"></div>
+        <button type="submit" class="login-btn">Sign In</button>
+      </form>
+
+      <!-- Register Form (hidden) -->
+      <form id="lgRegisterForm" class="login-form" style="display:none" autocomplete="on">
+        <label class="login-label">Nama</label>
+        <input type="text" name="name" placeholder="Nama lengkap" required class="login-input">
+        <label class="login-label">Email</label>
+        <input type="email" name="email" placeholder="contoh@starcoms.net" required autocomplete="email" class="login-input">
+        <label class="login-label">Password (min. 6 karakter)</label>
+        <input type="password" name="password" placeholder="••••••" required minlength="6" class="login-input">
+        <div class="login-error" id="lgRegisterError"></div>
+        <button type="submit" class="login-btn register-btn">Create Account</button>
+      </form>
+
+      <div class="login-toggle" id="lgToggle">
+        Belum punya akun? <a href="#" id="lgShowRegister">Register</a>
+      </div>
+      <div class="login-toggle" id="lgToggleBack" style="display:none">
+        Sudah punya akun? <a href="#" id="lgShowLogin">Sign In</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== APP (hidden until login) ========== -->
+  <div id="appContainer" class="app-container" style="display:none">
+
   <aside id="sidebar" class="sidebar">
     <div class="sidebar-brand">
       <span class="brand-icon">📐</span>
@@ -75,6 +123,8 @@
   <div id="modalOverlay" class="modal-overlay hidden">
     <div id="modalBox" class="modal-box"></div>
   </div>
+
+  </div><!-- /appContainer -->
 
   <script src="js/utils.js"></script>
   <script src="js/storage.js"></script>

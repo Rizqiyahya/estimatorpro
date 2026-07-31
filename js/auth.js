@@ -4,14 +4,102 @@
 
 const Auth = {
   async init() {
-    if (!DB.isCloud()) return; // No auth in local mode
+    if (!DB.isCloud()) return;
     const { data: { session } } = await DB._supabase.auth.getSession();
-    if (session) {
-      this._user = session.user;
-    }
+    if (session) { this._user = session.user; }
   },
 
   getUser() { return this._user; },
+
+  /* ---- Login Gate ---- */
+  bindLoginGate() {
+    const loginForm = document.getElementById('lgLoginForm');
+    const regForm = document.getElementById('lgRegisterForm');
+    const showReg = document.getElementById('lgShowRegister');
+    const showLogin = document.getElementById('lgShowLogin');
+    const toggle = document.getElementById('lgToggle');
+    const toggleBack = document.getElementById('lgToggleBack');
+
+    if (loginForm) loginForm.addEventListener('submit', (e) => this._handleGateLogin(e));
+    if (regForm) regForm.addEventListener('submit', (e) => this._handleGateRegister(e));
+    if (showReg) showReg.addEventListener('click', (e) => {
+      e.preventDefault();
+      loginForm.style.display = 'none'; regForm.style.display = 'flex';
+      toggle.style.display = 'none'; toggleBack.style.display = 'block';
+    });
+    if (showLogin) showLogin.addEventListener('click', (e) => {
+      e.preventDefault();
+      regForm.style.display = 'none'; loginForm.style.display = 'flex';
+      toggleBack.style.display = 'none'; toggle.style.display = 'block';
+    });
+  },
+
+  async _handleGateLogin(e) {
+    e.preventDefault();
+    const f = document.getElementById('lgLoginForm');
+    const errEl = document.getElementById('lgLoginError');
+    const btn = f.querySelector('button');
+    errEl.style.display = 'none';
+    btn.textContent = 'Signing in...'; btn.disabled = true;
+
+    const { data, error } = await DB._supabase.auth.signInWithPassword({
+      email: f.email.value.trim(),
+      password: f.password.value
+    });
+
+    if (error) {
+      errEl.textContent = error.message;
+      errEl.style.display = 'block';
+      btn.textContent = 'Sign In'; btn.disabled = false;
+      return;
+    }
+
+    this._user = data.user;
+    await Storage.pushLocalToCloud();
+    await Storage.syncFromCloud();
+    Storage.listenToCloud();
+    App.hideLoginGate();
+    Utils.showToast('Welcome, ' + data.user.email.split('@')[0], 'success');
+    App.renderView();
+    App.setActiveNav();
+  },
+
+  async _handleGateRegister(e) {
+    e.preventDefault();
+    const f = document.getElementById('lgRegisterForm');
+    const errEl = document.getElementById('lgRegisterError');
+    const btn = f.querySelector('button');
+    errEl.style.display = 'none';
+    btn.textContent = 'Creating account...'; btn.disabled = true;
+
+    const { data, error } = await DB._supabase.auth.signUp({
+      email: f.email.value.trim(),
+      password: f.password.value,
+      options: { data: { name: f.name.value.trim() } }
+    });
+
+    if (error) {
+      errEl.textContent = error.message;
+      errEl.style.display = 'block';
+      btn.textContent = 'Create Account'; btn.disabled = false;
+      return;
+    }
+
+    if (data.user && data.session) {
+      this._user = data.user;
+      await Storage.pushLocalToCloud();
+      await Storage.syncFromCloud();
+      Storage.listenToCloud();
+      App.hideLoginGate();
+      Utils.showToast('Welcome, ' + data.user.email.split('@')[0], 'success');
+      App.renderView();
+      App.setActiveNav();
+    } else {
+      btn.textContent = 'Check your email'; btn.disabled = true;
+      errEl.textContent = 'Account created! Check your email to confirm.';
+      errEl.style.display = 'block';
+    }
+  },
 
   showLogin() {
     const html = `
@@ -142,8 +230,8 @@ const Auth = {
     if (!DB.isCloud()) return;
     await DB._supabase.auth.signOut();
     this._user = null;
+    App.showLoginGate();
     Utils.showToast('Signed out', 'info');
-    App.renderView();
     App.setActiveNav();
   }
 };

@@ -13,11 +13,22 @@ const App = {
     Storage.migrate(); // Convert old IDs to UUIDs
     await DB.init();
     await Auth.init();
+
+    // Show login gate if cloud mode and NOT logged in
+    if (DB.isCloud() && !Auth.getUser()) {
+      this.showLoginGate();
+    } else {
+      this.hideLoginGate();
+    }
+
     // Sync AFTER auth is ready — only if user is logged in
     if (DB.isCloud() && Auth.getUser()) {
       await Storage.syncFromCloud();
       Storage.listenToCloud();
     }
+
+    // Bind login gate events
+    Auth.bindLoginGate();
 
     document.getElementById('themeToggle').addEventListener('click', () => {
       const cur = document.documentElement.getAttribute('data-theme');
@@ -133,6 +144,20 @@ const App = {
     } else if (!show && overlay) {
       overlay.remove();
     }
+  },
+
+  showLoginGate() {
+    const gate = document.getElementById('loginGate');
+    const app = document.getElementById('appContainer');
+    if (gate) gate.style.display = 'flex';
+    if (app) app.style.display = 'none';
+  },
+
+  hideLoginGate() {
+    const gate = document.getElementById('loginGate');
+    const app = document.getElementById('appContainer');
+    if (gate) gate.style.display = 'none';
+    if (app) app.style.display = 'flex';
   }
 };
 
