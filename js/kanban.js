@@ -185,6 +185,28 @@ const Kanban = {
         ${t.location?`<div><span style="color:var(--text-muted)">📍 Location:</span> <span style="color:var(--text-primary)">${Utils.escapeHtml(t.location)}</span></div>`:''}
         ${t.boqLink?`<div><span style="color:var(--text-muted)">🔗 BoQ:</span> <a href="${Utils.escapeHtml(t.boqLink)}" target="_blank" class="link-btn">Open Drive</a></div>`:''}
       </div>
+      <!-- Pipeline Timeline -->
+      ${t.pipelineHistory && t.pipelineHistory.length > 1 ? `
+      <div class="timeline-section">
+        <div class="timeline-title">⏱ Pipeline History</div>
+        <div class="timeline">
+          ${t.pipelineHistory.map((h, idx) => {
+            const next = t.pipelineHistory[idx + 1];
+            const duration = next ? Utils.formatDuration(new Date(next.at).getTime() - new Date(h.at).getTime()) : 'Active';
+            return `
+              <div class="timeline-item">
+                <div class="timeline-dot ${h.status}"></div>
+                <div class="timeline-info">
+                  <div class="timeline-status">${Utils.capitalize(h.status.replace('_',' '))} ${idx === 0 ? '<span style="font-weight:400;font-size:0.7rem">(start)</span>' : ''}</div>
+                  <div class="timeline-meta">${duration} · ${new Date(h.at).toLocaleDateString('id-ID',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+                </div>
+              </div>
+            `;
+          }).join('')}
+          <div class="timeline-line"></div>
+        </div>
+      </div>
+      ` : ''}
       <div class="modal-footer">
         <button class="btn btn-danger btn-sm" onclick="Storage.deleteTask('${t.id}');App.closeModal();Kanban.refresh()">Delete</button>
         <button class="btn btn-secondary" onclick="App.closeModal()">Close</button>

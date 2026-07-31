@@ -148,13 +148,34 @@ const Storage = {
   addTask(t) {
     const a = this.getTasks();
     t.id = Utils.genId(); t.createdAt = t.updatedAt = new Date().toISOString();
+    // Initialize pipeline history
+    t.pipelineHistory = t.pipelineHistory || [{
+      status: t.pipelineStatus || 'todo',
+      from: null,
+      at: t.createdAt,
+      by: Auth.getUser()?.email || 'local'
+    }];
     a.push(t); this.saveTasks(a);
     this._cloudPush('addTask', t);
     return t;
   },
   updateTask(id, u) {
     const a = this.getTasks(); const i = a.findIndex(t => t.id === id);
-    if (i!==-1) { a[i] = {...a[i],...u,updatedAt:new Date().toISOString()}; this.saveTasks(a); this._cloudPush('updTask', a[i]); return a[i]; }
+    if (i!==-1) {
+      const oldStatus = a[i].pipelineStatus;
+      a[i] = {...a[i],...u,updatedAt:new Date().toISOString()};
+      // Track pipeline history when status changes
+      if (u.pipelineStatus && u.pipelineStatus !== oldStatus) {
+        if (!a[i].pipelineHistory) a[i].pipelineHistory = [];
+        a[i].pipelineHistory.push({
+          status: u.pipelineStatus,
+          from: oldStatus,
+          at: new Date().toISOString(),
+          by: Auth.getUser()?.email || 'local'
+        });
+      }
+      this.saveTasks(a); this._cloudPush('updTask', a[i]); return a[i];
+    }
     return null;
   },
   deleteTask(id) { this.saveTasks(this.getTasks().filter(t => t.id !== id)); this._cloudPush('delTask', { id }); },

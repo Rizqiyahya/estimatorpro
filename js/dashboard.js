@@ -69,6 +69,18 @@ const Dashboard = {
     const doneThisWeek = tasks.filter(t => t.pipelineStatus === 'done' && new Date(t.updatedAt) >= wkAgo).length;
     const highPrio = tasks.filter(t => t.priority === 'High').length;
 
+    // Cycle time (avg total duration from created to done/revisi)
+    const cycleTimes = tasks
+      .filter(t => t.pipelineHistory && t.pipelineHistory.length > 1)
+      .map(t => Utils.calcCycleTime(t.pipelineHistory))
+      .filter(ms => ms !== null);
+    const avgCycle = cycleTimes.length ? Math.round(cycleTimes.reduce((a,b) => a+b, 0) / cycleTimes.length) : 0;
+    const stuckTasks = tasks.filter(t => {
+      if (!t.pipelineHistory || t.pipelineStatus === 'done') return false;
+      const lastAt = new Date(t.pipelineHistory[t.pipelineHistory.length - 1].at).getTime();
+      return (Date.now() - lastAt) > 3 * 24 * 60 * 60 * 1000; // stuck > 3 hari
+    }).length;
+
     // Recent activity
     const recent = tasks.filter(t => new Date(t.updatedAt) >= wkAgo).sort((a,b) => new Date(b.updatedAt) - new Date(a.updatedAt)).slice(0, 5);
 
@@ -123,9 +135,9 @@ const Dashboard = {
           <div class="kpi-sub">${done} Done · ${revisi} Revisi · ${highPrio} <span style="color:var(--red)">High</span></div>
         </div>
         <div class="kpi-card">
-          <div class="kpi-label">7-Day Activity</div>
-          <div class="kpi-value" style="font-size:1.6rem">+${newThisWeek} / ✓${doneThisWeek}</div>
-          <div class="kpi-sub">New requests / Tasks done</div>
+          <div class="kpi-label">Avg. Cycle Time</div>
+          <div class="kpi-value" style="font-size:1.6rem">${Utils.formatDuration(avgCycle)}</div>
+          <div class="kpi-sub">${cycleTimes.length} tasks · ${stuckTasks > 0 ? `<span style="color:var(--orange)">⚠ ${stuckTasks} stuck >3d</span>` : 'No tasks stuck'}</div>
         </div>
       </div>
 

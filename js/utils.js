@@ -1,4 +1,4 @@
-/* ============================================================
+﻿/* ============================================================
    EstimatorPro v3 — Utils
    Division: NETCO=Biru  OMG=Hijau  ITSOL=Ungu
    ============================================================ */
@@ -43,6 +43,11 @@ const Utils = {
     return str.length > len ? str.substring(0, len) + '…' : str;
   },
 
+	capitalize(str) {
+		if (!str) return '';
+		return str.charAt(0).toUpperCase() + str.slice(1);
+	},
+
   // Debounce — solves search "stuck" bug
   debounce(fn, delay = 250) {
     let timer;
@@ -82,5 +87,28 @@ const Utils = {
     t.className = `toast ${type}`; t.textContent = msg;
     c.appendChild(t);
     setTimeout(() => t.remove(), 2800);
+  },
+
+  /* Format duration: milliseconds -> "2h 30m" or "1d 4h" */
+  formatDuration(ms) {
+    if (!ms || ms < 0) return '—';
+    const s = Math.floor(ms / 1000);
+    if (s < 60) return s + 's';
+    if (s < 3600) return Math.floor(s / 60) + 'm';
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    if (h < 24) return h + 'h' + (m > 0 ? ' ' + m + 'm' : '');
+    const d = Math.floor(h / 24);
+    const rh = h % 24;
+    return d + 'd' + (rh > 0 ? ' ' + rh + 'h' : '');
+  },
+
+  /* Get total cycle time from pipeline history (ms) */
+  calcCycleTime(history) {
+    if (!history || history.length < 2) return null;
+    const start = new Date(history[0].at).getTime();
+    const doneEntry = history.find(h => h.status === 'done');
+    const end = doneEntry ? new Date(doneEntry.at).getTime() : new Date(history[history.length - 1].at).getTime();
+    return end - start;
   }
 };

@@ -1,4 +1,4 @@
-/* ============================================================
+﻿/* ============================================================
    EstimatorPro — Supabase Client + Dual-Mode Data Layer
    Works with localStorage (offline) OR Supabase (cloud)
    Set SUPABASE_URL + SUPABASE_KEY in settings to activate cloud mode
@@ -120,6 +120,7 @@ const DB = {
       endUser: t.end_user,
       scopePL: t.scope_pl, scopePS: t.scope_ps, scopeMS: t.scope_ms,
       pipelineStatus: t.pipeline_status,
+      pipelineHistory: t.pipeline_history,
       boqLink: t.boq_link
     }));
   },
@@ -142,10 +143,11 @@ const DB = {
       priority: t.priority || 'Normal',
       pipeline_status: t.pipelineStatus || 'todo',
       boq_link: t.boqLink || '',
+      pipeline_history: t.pipelineHistory || [],
       created_by: await this._getUserId()
     };
     const { data } = await this._supabase.from('tasks').insert(row).select().single();
-    return { ...data, requestId: data.request_id, subjectRequest: data.subject_request, subjectTask: data.subject_task, requestBy: data.request_by, endUser: data.end_user, scopePL: data.scope_pl, scopePS: data.scope_ps, scopeMS: data.scope_ms, pipelineStatus: data.pipeline_status, boqLink: data.boq_link };
+    return { ...data, requestId: data.request_id, subjectRequest: data.subject_request, subjectTask: data.subject_task, requestBy: data.request_by, endUser: data.end_user, scopePL: data.scope_pl, scopePS: data.scope_ps, scopeMS: data.scope_ms, pipelineStatus: data.pipeline_status, boqLink: data.boq_link, pipelineHistory: data.pipeline_history };
   },
 
   async updateTask(id, u) {
@@ -154,7 +156,7 @@ const DB = {
     const map = {
       requestId: 'request_id', subjectRequest: 'subject_request', subjectTask: 'subject_task',
       requestBy: 'request_by', endUser: 'end_user', scopePL: 'scope_pl', scopePS: 'scope_ps',
-      scopeMS: 'scope_ms', pipelineStatus: 'pipeline_status', boqLink: 'boq_link'
+      scopeMS: 'scope_ms', pipelineStatus: 'pipeline_status', boqLink: 'boq_link', pipelineHistory: 'pipeline_history'
     };
     for (const [k, v] of Object.entries(u)) {
       if (map[k]) row[map[k]] = v;

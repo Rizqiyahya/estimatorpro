@@ -79,6 +79,7 @@ CREATE TABLE public.tasks (
   priority TEXT NOT NULL DEFAULT 'Normal' CHECK (priority IN ('High', 'Normal')),
   pipeline_status TEXT NOT NULL DEFAULT 'todo' CHECK (pipeline_status IN ('todo', 'in_progress', 'review', 'done', 'revisi')),
   boq_link TEXT NOT NULL DEFAULT '',
+  pipeline_history JSONB NOT NULL DEFAULT '[]',
   created_by UUID REFERENCES public.profiles(id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -153,3 +154,9 @@ CREATE POLICY "Manager read only" ON public.estimates FOR SELECT USING (
 -- ============================================================
 ALTER PUBLICATION supabase_realtime ADD TABLE public.tasks;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.requests;
+
+-- ============================================================
+-- MIGRATION: Run this if you already have the tables created
+-- (adds pipeline_history column for cycle time tracking)
+-- ============================================================
+-- ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS pipeline_history JSONB NOT NULL DEFAULT '[]';
