@@ -58,10 +58,30 @@ const Dashboard = {
     };
     const totalPipe = Object.values(pipes).reduce((s,v) => s+v, 0) || 1;
 
-    // Per division
+    // Per division - tasks
     const divs = { NETCO: 0, OMG: 0, ITSOL: 0 };
     tasks.forEach(t => { const r = reqs.find(rr => rr.id === t.requestId); if (r && divs[r.division] !== undefined) divs[r.division]++; });
     const maxDiv = Math.max(...Object.values(divs), 1);
+
+    // Per division - win rate
+    const divStats = { NETCO: { total: 0, win: 0, lose: 0, open: 0 }, OMG: { total: 0, win: 0, lose: 0, open: 0 }, ITSOL: { total: 0, win: 0, lose: 0, open: 0 } };
+    reqs.forEach(r => {
+      if (divStats[r.division]) {
+        divStats[r.division].total++;
+        if (r.status === 'win') divStats[r.division].win++;
+        if (r.status === 'lose') divStats[r.division].lose++;
+        if (r.status === 'open') divStats[r.division].open++;
+      }
+    });
+    const divWR = Object.entries(divStats).map(([div, s]) => ({
+      div,
+      total: s.total,
+      win: s.win,
+      lose: s.lose,
+      open: s.open,
+      winRate: s.total > 0 ? Math.round((s.win / (s.win + s.lose)) * 100) : 0,
+      color: div === 'NETCO' ? 'var(--netco)' : div === 'OMG' ? 'var(--omg)' : 'var(--itsol)'
+    }));
 
     // 7-day
     const wkAgo = new Date(Date.now() - 7*24*60*60*1000);
@@ -215,7 +235,9 @@ const Dashboard = {
           <div class="card-header">
             <h3 class="card-title">Division Breakdown</h3>
           </div>
-          <div class="bar-chart" style="margin-top:8px">
+          <!-- Tasks per division -->
+          <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:6px">Tasks</div>
+          <div class="bar-chart">
             ${[
               { div:'NETCO', color:'netco', col:'var(--netco)' },
               { div:'OMG', color:'omg', col:'var(--omg)' },
@@ -228,7 +250,7 @@ const Dashboard = {
                   <div class="bar-label" style="color:${d.col}">${d.div}</div>
                   <div class="bar-track">
                     <div class="bar-fill ${d.color}" style="width:${pct}%">
-                      ${pct>20?`<span class="bar-value">${c}</span>`:''}
+                      ${pct>25?`<span class="bar-value">${c}</span>`:''}
                     </div>
                   </div>
                   <div class="bar-count" style="color:var(--text-primary);font-weight:600">${c}</div>
@@ -236,18 +258,36 @@ const Dashboard = {
               `;
             }).join('')}
           </div>
-          <div style="margin-top:20px;display:flex;gap:16px;font-size:0.82rem">
+          <!-- Win Rate by Division -->
+          <div style="font-size:0.72rem;color:var(--text-muted);margin:16px 0 6px">Win Rate (won / decided)</div>
+          ${divWR.map(d => {
+            const wrPct = d.winRate;
+            const decided = d.win + d.lose;
+            const wrColor = wrPct >= 60 ? 'var(--green)' : wrPct >= 30 ? 'var(--orange)' : 'var(--red)';
+            return `
+              <div class="bar-row" style="margin-bottom:4px">
+                <div class="bar-label" style="color:${d.color};font-weight:600">${d.div}</div>
+                <div class="bar-track" style="background:var(--bg-input)">
+                  <div class="bar-fill" style="width:${wrPct}%;background:${wrColor};border-radius:3px">
+                    ${wrPct>25?`<span class="bar-value">${wrPct}%</span>`:''}
+                  </div>
+                </div>
+                <div style="font-size:0.68rem;color:var(--text-muted);min-width:55px;text-align:right">${d.win}W/${decided}D</div>
+              </div>
+            `;
+          }).join('')}
+          <div style="margin-top:16px;display:flex;gap:12px;font-size:0.78rem">
             <div style="flex:1;text-align:center;padding:10px;background:var(--bg-input);border-radius:8px">
               <div style="color:var(--text-muted)">High Priority</div>
-              <div style="font-size:1.5rem;font-weight:700;color:var(--red)">${highPrio}</div>
+              <div style="font-size:1.4rem;font-weight:700;color:var(--red)">${highPrio}</div>
             </div>
             <div style="flex:1;text-align:center;padding:10px;background:var(--bg-input);border-radius:8px">
               <div style="color:var(--text-muted)">Done This Week</div>
-              <div style="font-size:1.5rem;font-weight:700;color:var(--green)">${doneThisWeek}</div>
+              <div style="font-size:1.4rem;font-weight:700;color:var(--green)">${doneThisWeek}</div>
             </div>
             <div style="flex:1;text-align:center;padding:10px;background:var(--bg-input);border-radius:8px">
-              <div style="color:var(--text-muted)">Win Rate</div>
-              <div style="font-size:1.5rem;font-weight:700;color:var(--accent)">${winRate}%</div>
+              <div style="color:var(--text-muted)">Overall WR</div>
+              <div style="font-size:1.4rem;font-weight:700;color:var(--accent)">${winRate}%</div>
             </div>
           </div>
         </div>
