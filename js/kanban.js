@@ -2,10 +2,18 @@
    EstimatorPro v3 — Kanban (5 Pipeline Columns, Division-Colored Cards)
    Columns: To Do | In Progress | Review | Done | Revisi
    Card border color = division color (NETCO=Biru, OMG=Hijau, ITSOL=Ungu)
-   All cards = compact mode (title + division + cycle time · click for detail)
+   All cards = compact mode (title + division + category + priority + cycle time)
+   Division filter tabs: All | NETCO | OMG | ITSOL
    ============================================================ */
 
 const Kanban = {
+  filterDiv: 'all',
+
+  setDiv(div) {
+    this.filterDiv = div;
+    this.refresh();
+  },
+
   render() {
     const tasks = Storage.getTasks();
     const requests = Storage.getRequests();
@@ -14,6 +22,27 @@ const Kanban = {
       const m = { NETCO: 'var(--netco)', OMG: 'var(--omg)', ITSOL: 'var(--itsol)' };
       return m[div] || 'var(--border)';
     };
+
+    // Count tasks per division (via linked request)
+    const divCounts = { NETCO: 0, OMG: 0, ITSOL: 0 };
+    tasks.forEach(t => {
+      const r = requests.find(rr => rr.id === t.requestId);
+      if (r && divCounts[r.division] !== undefined) divCounts[r.division]++;
+    });
+
+    const filteredTasks = this.filterDiv === 'all'
+      ? tasks
+      : tasks.filter(t => {
+          const r = requests.find(rr => rr.id === t.requestId);
+          return r && r.division === this.filterDiv;
+        });
+
+    const divs = [
+      { id: 'all', label: 'All', color: 'var(--text-secondary)', count: tasks.length },
+      { id: 'NETCO', label: 'NETCO', color: 'var(--netco)', count: divCounts.NETCO },
+      { id: 'OMG', label: 'OMG', color: 'var(--omg)', count: divCounts.OMG },
+      { id: 'ITSOL', label: 'ITSOL', color: 'var(--itsol)', count: divCounts.ITSOL }
+    ];
 
     const columns = [
       { id:'todo', title:'To Do', color:'var(--pipe-todo)', borderColor:'var(--pipe-todo)' },
@@ -37,17 +66,28 @@ const Kanban = {
         </div>
       </div>
 
-      ${tasks.length === 0 ? `
+      <!-- Division filter tabs -->
+      <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap">
+        ${divs.map(d => `
+          <button class="filter-pill ${this.filterDiv===d.id?'active':''}"
+            style="border-color:${this.filterDiv===d.id?d.color:'var(--border)'};color:${this.filterDiv===d.id?d.color:'var(--text-secondary)'}"
+            onclick="Kanban.setDiv('${d.id}')">
+            ${d.label} <span style="font-weight:400;opacity:0.7">(${d.count})</span>
+          </button>
+        `).join('')}
+      </div>
+
+      ${filteredTasks.length === 0 ? `
         <div class="empty-state">
           <div class="empty-state-icon">📌</div>
-          <div class="empty-state-title">No tasks yet</div>
+          <div class="empty-state-title">No tasks${this.filterDiv!=='all'?' for '+this.filterDiv:''}</div>
           <div class="empty-state-desc">Create tasks in the Tasks view to see them on the Kanban board.</div>
           <button class="btn btn-primary" onclick="App.navigate('#tasks');setTimeout(()=>Tasks.openModal(),200)">Go to Tasks</button>
         </div>
       ` : `
         <div class="kanban-wrapper" style="display:flex;flex-direction:row;gap:14px">
           ${columns.map(col => {
-            const colTasks = tasks.filter(t => t.pipelineStatus === col.id);
+            const colTasks = filteredTasks.filter(t => t.pipelineStatus === col.id);
             return `
               <div class="kanban-column" style="flex:1;min-width:240px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;display:flex;flex-direction:column"
                 data-status="${col.id}"
