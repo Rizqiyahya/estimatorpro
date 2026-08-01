@@ -6,6 +6,7 @@ const Tasks = {
   filterDiv: 'all',
   filterPipe: 'all',
   filterCat: 'all',
+  filterScope: 'all',
   searchText: '',
 
   render() {
@@ -18,6 +19,12 @@ const Tasks = {
     }
     if (this.filterPipe !== 'all') tasks = tasks.filter(t => t.pipelineStatus === this.filterPipe);
     if (this.filterCat !== 'all') tasks = tasks.filter(t => (t.category || '') === this.filterCat);
+    if (this.filterScope !== 'all') tasks = tasks.filter(t => {
+      if (this.filterScope === 'PL') return t.scopePL;
+      if (this.filterScope === 'PS') return t.scopePS;
+      if (this.filterScope === 'MS') return t.scopeMS;
+      return true;
+    });
     if (this.searchText) {
       const q = this.searchText.toLowerCase();
       tasks = tasks.filter(t =>
@@ -62,6 +69,11 @@ const Tasks = {
         <button class="filter-pill ${this.filterPipe==='review'?'active':''}" onclick="Tasks.filterPipe='review';Tasks.refresh()">Review</button>
         <button class="filter-pill ${this.filterPipe==='done'?'active':''}" onclick="Tasks.filterPipe='done';Tasks.refresh()">Done</button>
         <button class="filter-pill ${this.filterPipe==='revisi'?'active':''}" onclick="Tasks.filterPipe='revisi';Tasks.refresh()">Revisi</button>
+        <span style="margin:0 4px;color:var(--border);font-size:0.7rem">|</span>
+        <button class="filter-pill ${this.filterScope==='all'?'active':''}" onclick="Tasks.filterScope='all';Tasks.refresh()">🔍 All</button>
+        <button class="filter-pill ${this.filterScope==='PL'?'active':''}" style="border-color:${this.filterScope==='PL'?'var(--accent)':'var(--border)'}" onclick="Tasks.filterScope='PL';Tasks.refresh()">PL</button>
+        <button class="filter-pill ${this.filterScope==='PS'?'active':''}" style="border-color:${this.filterScope==='PS'?'var(--accent)':'var(--border)'}" onclick="Tasks.filterScope='PS';Tasks.refresh()">PS</button>
+        <button class="filter-pill ${this.filterScope==='MS'?'active':''}" style="border-color:${this.filterScope==='MS'?'var(--accent)':'var(--border)'}" onclick="Tasks.filterScope='MS';Tasks.refresh()">MS</button>
       </div>
 
       <div class="search-bar">
@@ -165,6 +177,11 @@ const Tasks = {
       if (this.filterDiv !== 'all' && req?.division !== this.filterDiv) match = false;
       if (this.filterPipe !== 'all' && t.pipelineStatus !== this.filterPipe) match = false;
       if (this.filterCat !== 'all' && (t.category || '') !== this.filterCat) match = false;
+      if (this.filterScope !== 'all') {
+        if (this.filterScope === 'PL' && !t.scopePL) match = false;
+        if (this.filterScope === 'PS' && !t.scopePS) match = false;
+        if (this.filterScope === 'MS' && !t.scopeMS) match = false;
+      }
       if (q) {
         const hay = [t.subjectTask, t.subjectRequest, t.requestBy, t.customer].join(' ').toLowerCase();
         if (!hay.includes(q)) match = false;
