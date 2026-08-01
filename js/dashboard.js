@@ -56,6 +56,12 @@ const Dashboard = {
     tasks.forEach(t => { const r = reqs.find(rr=>rr.id===t.requestId); if (r&&divs[r.division]!==undefined) divs[r.division]++; });
     const maxDiv = Math.max(...Object.values(divs), 1);
 
+    // Scope breakdown (tasks)
+    const scopePL = tasks.filter(t => t.scopePL).length;
+    const scopePS = tasks.filter(t => t.scopePS).length;
+    const scopeMS = tasks.filter(t => t.scopeMS).length;
+    const maxScope = Math.max(scopePL, scopePS, scopeMS, 1);
+
     // Per division - win rate
     const divStats = { NETCO:{total:0,win:0,lose:0,open:0}, OMG:{total:0,win:0,lose:0,open:0}, ITSOL:{total:0,win:0,lose:0,open:0} };
     reqs.forEach(r => { if (divStats[r.division]) { divStats[r.division].total++; if (r.status==='win')divStats[r.division].win++; if (r.status==='lose')divStats[r.division].lose++; if (r.status==='open')divStats[r.division].open++; }});
@@ -103,9 +109,6 @@ const Dashboard = {
     // Donut data
     const reqStatus = [{ value: win, label: 'Win' },{ value: open, label: 'Open' },{ value: lose, label: 'Lose' }];
     const reqColors = ['var(--green)','var(--blue)','var(--red)'];
-    const divData = [{ value:divs.NETCO,label:'NETCO' },{ value:divs.OMG,label:'OMG' },{ value:divs.ITSOL,label:'ITSOL' }];
-    const divColors = ['var(--netco)','var(--omg)','var(--itsol)'];
-
     const pipeItems = [
       { key:'todo',label:'To Do',color:'var(--pipe-todo)',count:pipes.todo },
       { key:'in_progress',label:'In Progress',color:'var(--pipe-inprog)',count:pipes.in_progress },
@@ -172,11 +175,22 @@ const Dashboard = {
         </div>
 
         <div class="card">
-          <div class="card-header"><h3 class="card-title">Tasks / Division</h3></div>
-          <div class="donut-wrap" style="justify-content:center">
-            ${this._donut(divData, divColors, 150)}
-            <div class="donut-legend">${this._legend(divData, divColors)}</div>
+          <div class="card-header"><h3 class="card-title">Scope Breakdown</h3></div>
+          <div class="bar-chart" style="margin-top:8px">
+            ${[
+              { key:'PL', count:scopePL, color:'var(--blue)', pct:Math.round((scopePL/totalTasks||0)*100) },
+              { key:'PS', count:scopePS, color:'var(--purple)', pct:Math.round((scopePS/totalTasks||0)*100) },
+              { key:'MS', count:scopeMS, color:'var(--cyan)', pct:Math.round((scopeMS/totalTasks||0)*100) }
+            ].map(s => {
+              const barPct = (s.count/maxScope)*100;
+              return `<div class="bar-row">
+                <div class="bar-label" style="color:${s.color};font-weight:600">${s.key}</div>
+                <div class="bar-track"><div class="bar-fill" style="width:${barPct}%;background:${s.color};border-radius:3px">${barPct>25?`<span class="bar-value">${s.count}</span>`:''}</div></div>
+                <div style="font-size:0.68rem;color:var(--text-muted);min-width:40px;text-align:right">${s.pct}%</div>
+              </div>`;
+            }).join('')}
           </div>
+          <div style="margin-top:6px;font-size:0.64rem;color:var(--text-muted);text-align:center">% dari ${totalTasks} task · Multi-scope task dihitung per scope</div>
         </div>
       </div>
 
