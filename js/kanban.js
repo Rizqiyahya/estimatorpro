@@ -1,7 +1,8 @@
-﻿/* ============================================================
+/* ============================================================
    EstimatorPro v3 — Kanban (5 Pipeline Columns, Division-Colored Cards)
    Columns: To Do | In Progress | Review | Done | Revisi
    Card border color = division color (NETCO=Biru, OMG=Hijau, ITSOL=Ungu)
+   Done cards = compact mode (title + division + cycle time only)
    ============================================================ */
 
 const Kanban = {
@@ -61,6 +62,25 @@ const Kanban = {
                   ${colTasks.map(t => {
                     const req = requests.find(r => r.id === t.requestId);
                     const divColor = getDivColor(req?.division);
+                    const cycleTime = Utils.calcCycleTime(t.pipelineHistory);
+                    // Compact card for Done column
+                    if (col.id === 'done') {
+                      return `
+                        <div class="kanban-card" style="border-left:3px solid ${divColor};padding:8px 10px"
+                          data-task-id="${t.id}"
+                          draggable="true"
+                          ondragstart="Kanban.handleDragStart(event)"
+                          ondragend="Kanban.handleDragEnd(event)"
+                          onclick="Kanban.viewTask('${t.id}')">
+                          <div style="font-weight:600;font-size:0.78rem;margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${Utils.escapeHtml(t.subjectTask)}</div>
+                          <div style="display:flex;gap:6px;align-items:center">
+                            <span class="badge ${Utils.divClass(req?.division)}" style="font-size:0.6rem">${req?.division||'—'}</span>
+                            ${cycleTime?`<span style="font-size:0.62rem;color:var(--text-muted)">⏱ ${Utils.formatDuration(cycleTime)}</span>`:''}
+                          </div>
+                        </div>
+                      `;
+                    }
+                    // Full card for active columns
                     return `
                       <div class="kanban-card" style="border-left:3px solid ${divColor}"
                         draggable="true"
