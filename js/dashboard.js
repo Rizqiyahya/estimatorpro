@@ -1,4 +1,4 @@
-/* ============================================================
+﻿/* ============================================================
    EstimatorPro v4 — Dashboard (DAL Layout: Map + Full Grid)
    ============================================================ */
 
@@ -83,7 +83,7 @@ const Dashboard = {
     // Location breakdown
     const locMap = {};
     reqs.forEach(r => {
-      const raw = r.location || r.endUser || '';
+      const raw = r.location || '';
       if (!raw.trim()) return;
       raw.split(',').forEach(s => {
         const city = s.trim();
@@ -179,8 +179,8 @@ const Dashboard = {
         </div>
       </div>
 
-      <!-- ======== ROW 3: Division Breakdown (2) + Win Rate (1) + Summary (1) ======== -->
-      <div class="dash-grid-211">
+      <!-- ======== ROW 3: Division Breakdown (2) + Win Rate (2) ======== -->
+      <div class="dash-grid-2">
         <div class="card">
           <div class="card-header"><h3 class="card-title">Division Breakdown — Tasks</h3></div>
           <div class="bar-chart" style="margin-top:8px">
@@ -200,39 +200,44 @@ const Dashboard = {
           ${divWR.map(d => {
             const wrPct = d.winRate; const decided = d.win+d.lose;
             const wrColor = wrPct>=60?'var(--green)':wrPct>=30?'var(--orange)':'var(--red)';
-            return `<div class="bar-row" style="margin-bottom:6px">
+            return `<div class="bar-row" style="margin-bottom:10px">
               <div class="bar-label" style="color:${d.color};font-weight:600">${d.div}</div>
               <div class="bar-track" style="background:var(--bg-input)"><div class="bar-fill" style="width:${wrPct}%;background:${wrColor};border-radius:3px">${wrPct>25?`<span class="bar-value">${wrPct}%</span>`:''}</div></div>
               <div style="font-size:0.68rem;color:var(--text-muted);min-width:50px;text-align:right">${d.win}W/${decided}D</div>
             </div>`;
           }).join('')}
-        </div>
-
-        <div class="card">
-          <div class="card-header"><h3 class="card-title">Summary</h3></div>
-          <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">
-            <div style="padding:10px;background:var(--bg-input);border-radius:8px;text-align:center">
-              <div style="color:var(--text-muted);font-size:0.72rem">High Priority</div>
-              <div style="font-size:1.3rem;font-weight:700;color:var(--red)">${highPrio}</div>
-            </div>
-            <div style="padding:10px;background:var(--bg-input);border-radius:8px;text-align:center">
-              <div style="color:var(--text-muted);font-size:0.72rem">Done This Week</div>
-              <div style="font-size:1.3rem;font-weight:700;color:var(--green)">${doneThisWeek}</div>
-            </div>
-            <div style="padding:10px;background:var(--bg-input);border-radius:8px;text-align:center">
-              <div style="color:var(--text-muted);font-size:0.72rem">Overall WR</div>
-              <div style="font-size:1.3rem;font-weight:700;color:var(--accent)">${winRate}%</div>
-            </div>
-            <div style="padding:10px;background:var(--bg-input);border-radius:8px;text-align:center">
-              <div style="color:var(--text-muted);font-size:0.72rem">Unique Customers</div>
-              <div style="font-size:1.3rem;font-weight:700;color:var(--text-primary)">${uniqueCust}</div>
-            </div>
+          <div style="margin-top:12px;font-size:0.74rem;color:var(--text-muted)">
+            🟢 ≥60% bagus · 🟠 30-59% waspada · 🔴 &lt;30% kritis
           </div>
         </div>
       </div>
 
-      <!-- ======== ROW 4: Customer (1) + Location Map (2) + Recent (1) ======== -->
-      <div class="dash-grid-121">
+      <!-- ======== ROW 4: Stats (1:1:1:1) ======== -->
+      <div class="kpi-grid" style="margin-bottom:14px">
+        <div class="kpi-card" style="padding:14px 18px">
+          <div class="kpi-label" style="margin-bottom:4px">High Priority</div>
+          <div class="kpi-value" style="font-size:1.8rem;color:var(--red)">${highPrio}</div>
+          <div class="kpi-sub">Tasks needing attention</div>
+        </div>
+        <div class="kpi-card" style="padding:14px 18px">
+          <div class="kpi-label" style="margin-bottom:4px">Done This Week</div>
+          <div class="kpi-value" style="font-size:1.8rem;color:var(--green)">${doneThisWeek}</div>
+          <div class="kpi-sub">Tasks completed</div>
+        </div>
+        <div class="kpi-card" style="padding:14px 18px">
+          <div class="kpi-label" style="margin-bottom:4px">Overall WR</div>
+          <div class="kpi-value" style="font-size:1.8rem;color:var(--accent)">${winRate}%</div>
+          <div class="kpi-sub">${win}W / ${win+lose}D decided</div>
+        </div>
+        <div class="kpi-card" style="padding:14px 18px">
+          <div class="kpi-label" style="margin-bottom:4px">Unique Customers</div>
+          <div class="kpi-value" style="font-size:1.8rem;color:var(--text-primary)">${uniqueCust}</div>
+          <div class="kpi-sub">Across ${Object.keys(divs).filter(d=>divs[d]>0).length} divisions</div>
+        </div>
+      </div>
+
+      <!-- ======== ROW 5: Customer Breakdown (2) + Location Breakdown (2) ======== -->
+      <div class="dash-grid-2">
         <div class="card">
           <div class="card-header">
             <h3 class="card-title">Customer Breakdown</h3>
@@ -260,36 +265,40 @@ const Dashboard = {
             <h3 class="card-title">Location Breakdown</h3>
             <span style="font-size:0.72rem;color:var(--text-muted)">${topLoc.length} locations · ${reqs.length} requests</span>
           </div>
-          <div class="map-wrap">
-            ${this._indoMap(topLoc, maxLoc)}
-            <div class="map-legend">
-              ${topLoc.slice(0,6).map(([city, data], i) => {
-                const r = Math.max(6, Math.min(18, 6 + (data.count/maxLoc)*14));
+          ${topLoc.length===0?`<p style="color:var(--text-muted);font-size:0.82rem;text-align:center;padding:16px">No location data</p>`:`
+            <div class="bar-chart" style="margin-top:4px">
+              ${topLoc.map(([city, data], i) => {
+                const pct = (data.count/maxLoc)*100;
                 const topDiv = Object.entries(data.divisi).sort((a,b)=>b[1]-a[1])[0];
                 const dColor = topDiv ? (topDiv[0]==='NETCO'?'var(--netco)':topDiv[0]==='OMG'?'var(--omg)':'var(--itsol)') : 'var(--accent)';
-                return `<div class="map-legend-row"><span class="map-dot" style="width:${r}px;height:${r}px;background:${dColor}"></span><span>${Utils.truncate(city,14)}</span><strong>${data.count}</strong></div>`;
-              }).join('')}
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header"><h3 class="card-title">Recent Activity</h3></div>
-          ${recent.length===0?`<p style="color:var(--text-muted);font-size:0.82rem;text-align:center;padding:16px">No recent activity</p>`:`
-            <div class="recent-list">
-              ${recent.map(t => {
-                const req = reqs.find(r=>r.id===t.requestId);
-                const ago = Math.max(0,Math.floor((Date.now()-new Date(t.updatedAt))/(1000*60*60*24)));
-                return `<div class="recent-row">
-                  <span class="recent-div" style="color:${Utils.divColor(req?.division)}">${req?.division||'—'}</span>
-                  <span class="recent-subject">${Utils.escapeHtml(Utils.truncate(t.subjectTask,30))}</span>
-                  ${Utils.pipeBadge(t.pipelineStatus)}
-                  <span class="recent-ago">${ago}d</span>
+                return `<div class="bar-row">
+                  <div class="bar-label" style="width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.75rem;font-weight:500;color:${dColor}" title="${Utils.escapeHtml(city)}">${Utils.escapeHtml(Utils.truncate(city,16))}</div>
+                  <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${dColor};opacity:0.7">${pct>35?`<span class="bar-value">${data.count}</span>`:''}</div></div>
+                  <span style="font-weight:600;font-size:0.78rem">${data.count}</span>
                 </div>`;
               }).join('')}
             </div>
           `}
         </div>
+      </div>
+
+      <!-- ======== ROW 6: Recent Activity ======== -->
+      <div class="card">
+        <div class="card-header"><h3 class="card-title">Recent Activity (7 Days)</h3></div>
+        ${recent.length===0?`<p style="color:var(--text-muted);font-size:0.82rem;text-align:center;padding:16px">No recent activity</p>`:`
+          <div class="recent-list">
+            ${recent.map(t => {
+              const req = reqs.find(r=>r.id===t.requestId);
+              const ago = Math.max(0,Math.floor((Date.now()-new Date(t.updatedAt))/(1000*60*60*24)));
+              return `<div class="recent-row">
+                <span class="recent-div" style="color:${Utils.divColor(req?.division)}">${req?.division||'—'}</span>
+                <span class="recent-subject">${Utils.escapeHtml(Utils.truncate(t.subjectTask,30))}</span>
+                ${Utils.pipeBadge(t.pipelineStatus)}
+                <span class="recent-ago">${ago}d</span>
+              </div>`;
+            }).join('')}
+          </div>
+        `}
       </div>
     `;
   },
