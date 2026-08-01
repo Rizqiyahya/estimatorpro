@@ -1,5 +1,5 @@
-﻿/* ============================================================
-   EstimatorPro v4 — Dashboard (DAL Layout: Map + Full Grid)
+/* ============================================================
+   EstimatorPro v5 — Dashboard (6-Row Layout)
    ============================================================ */
 
 const Dashboard = {
@@ -30,7 +30,7 @@ const Dashboard = {
       </div>`).join('');
   },
 
-  /* ---- All Data ---- */
+  /* ---- Main Render ---- */
   render() {
     const reqs = Storage.getRequests();
     const tasks = Storage.getTasks();
@@ -80,26 +80,27 @@ const Dashboard = {
     const uniqueCust = Object.keys(custMap).length;
     const custColors = ['var(--accent)','var(--blue)','var(--green)','var(--purple)','var(--orange)','var(--cyan)','var(--netco)','var(--pipe-inprog)'];
 
-    // Location breakdown
-    const locMap = {};
+    // End user breakdown (from endUser field)
+    const userMap = {};
     reqs.forEach(r => {
       const raw = r.endUser || '';
       if (!raw.trim()) return;
       raw.split(',').forEach(s => {
-        const city = s.trim();
-        if (!city || city.length < 2) return;
-        if (!locMap[city]) locMap[city] = { count:0, divisi:{} };
-        locMap[city].count++;
+        const name = s.trim();
+        if (!name || name.length < 2) return;
+        if (!userMap[name]) userMap[name] = { count:0, divisi:{} };
+        userMap[name].count++;
         const div = r.division || 'NETCO';
-        locMap[city].divisi[div] = (locMap[city].divisi[div]||0) + 1;
+        userMap[name].divisi[div] = (userMap[name].divisi[div]||0) + 1;
       });
     });
-    const topLoc = Object.entries(locMap).sort((a,b) => b[1].count - a[1].count).slice(0,10);
-    const maxLoc = topLoc.length ? topLoc[0][1].count : 1;
+    const topUser = Object.entries(userMap).sort((a,b) => b[1].count - a[1].count).slice(0,8);
+    const maxUser = topUser.length ? topUser[0][1].count : 1;
 
     // Recent activity
     const recent = tasks.filter(t => new Date(t.updatedAt)>=wkAgo).sort((a,b)=>new Date(b.updatedAt)-new Date(a.updatedAt)).slice(0,5);
 
+    // Donut data
     const reqStatus = [{ value: win, label: 'Win' },{ value: open, label: 'Open' },{ value: lose, label: 'Lose' }];
     const reqColors = ['var(--green)','var(--blue)','var(--red)'];
     const divData = [{ value:divs.NETCO,label:'NETCO' },{ value:divs.OMG,label:'OMG' },{ value:divs.ITSOL,label:'ITSOL' }];
@@ -179,8 +180,8 @@ const Dashboard = {
         </div>
       </div>
 
-      <!-- ======== ROW 3: Division Breakdown (2) + Win Rate (1) + Summary (1) ======== -->
-      <div class="dash-grid-211">
+      <!-- ======== ROW 3: Division Breakdown (2) + Win Rate (2) ======== -->
+      <div class="dash-grid-2">
         <div class="card">
           <div class="card-header"><h3 class="card-title">Division Breakdown — Tasks</h3></div>
           <div class="bar-chart" style="margin-top:8px">
@@ -200,39 +201,44 @@ const Dashboard = {
           ${divWR.map(d => {
             const wrPct = d.winRate; const decided = d.win+d.lose;
             const wrColor = wrPct>=60?'var(--green)':wrPct>=30?'var(--orange)':'var(--red)';
-            return `<div class="bar-row" style="margin-bottom:6px">
+            return `<div class="bar-row" style="margin-bottom:10px">
               <div class="bar-label" style="color:${d.color};font-weight:600">${d.div}</div>
               <div class="bar-track" style="background:var(--bg-input)"><div class="bar-fill" style="width:${wrPct}%;background:${wrColor};border-radius:3px">${wrPct>25?`<span class="bar-value">${wrPct}%</span>`:''}</div></div>
               <div style="font-size:0.68rem;color:var(--text-muted);min-width:50px;text-align:right">${d.win}W/${decided}D</div>
             </div>`;
           }).join('')}
-        </div>
-
-        <div class="card">
-          <div class="card-header"><h3 class="card-title">Summary</h3></div>
-          <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">
-            <div style="padding:10px;background:var(--bg-input);border-radius:8px;text-align:center">
-              <div style="color:var(--text-muted);font-size:0.72rem">High Priority</div>
-              <div style="font-size:1.3rem;font-weight:700;color:var(--red)">${highPrio}</div>
-            </div>
-            <div style="padding:10px;background:var(--bg-input);border-radius:8px;text-align:center">
-              <div style="color:var(--text-muted);font-size:0.72rem">Done This Week</div>
-              <div style="font-size:1.3rem;font-weight:700;color:var(--green)">${doneThisWeek}</div>
-            </div>
-            <div style="padding:10px;background:var(--bg-input);border-radius:8px;text-align:center">
-              <div style="color:var(--text-muted);font-size:0.72rem">Overall WR</div>
-              <div style="font-size:1.3rem;font-weight:700;color:var(--accent)">${winRate}%</div>
-            </div>
-            <div style="padding:10px;background:var(--bg-input);border-radius:8px;text-align:center">
-              <div style="color:var(--text-muted);font-size:0.72rem">Unique Customers</div>
-              <div style="font-size:1.3rem;font-weight:700;color:var(--text-primary)">${uniqueCust}</div>
-            </div>
+          <div style="margin-top:12px;font-size:0.7rem;color:var(--text-muted)">
+            🟢 ≥60% good · 🟠 30-59% caution · 🔴 &lt;30% critical
           </div>
         </div>
       </div>
 
-      <!-- ======== ROW 4: Customer (1) + Location Map (2) + Recent (1) ======== -->
-      <div class="dash-grid-121">
+      <!-- ======== ROW 4: Stats (1:1:1:1) ======== -->
+      <div class="kpi-grid" style="margin-bottom:14px">
+        <div class="kpi-card" style="padding:14px 18px">
+          <div class="kpi-label" style="margin-bottom:4px">High Priority</div>
+          <div class="kpi-value" style="font-size:1.8rem;color:var(--red)">${highPrio}</div>
+          <div class="kpi-sub">Tasks needing attention</div>
+        </div>
+        <div class="kpi-card" style="padding:14px 18px">
+          <div class="kpi-label" style="margin-bottom:4px">Done This Week</div>
+          <div class="kpi-value" style="font-size:1.8rem;color:var(--green)">${doneThisWeek}</div>
+          <div class="kpi-sub">Tasks completed</div>
+        </div>
+        <div class="kpi-card" style="padding:14px 18px">
+          <div class="kpi-label" style="margin-bottom:4px">Overall WR</div>
+          <div class="kpi-value" style="font-size:1.8rem;color:var(--accent)">${winRate}%</div>
+          <div class="kpi-sub">${win}W / ${win+lose}D decided</div>
+        </div>
+        <div class="kpi-card" style="padding:14px 18px">
+          <div class="kpi-label" style="margin-bottom:4px">Unique Customers</div>
+          <div class="kpi-value" style="font-size:1.8rem;color:var(--text-primary)">${uniqueCust}</div>
+          <div class="kpi-sub">Across divisions</div>
+        </div>
+      </div>
+
+      <!-- ======== ROW 5: Customer (2) + End User (2) ======== -->
+      <div class="dash-grid-2">
         <div class="card">
           <div class="card-header">
             <h3 class="card-title">Customer Breakdown</h3>
@@ -258,17 +264,16 @@ const Dashboard = {
         <div class="card">
           <div class="card-header">
             <h3 class="card-title">End User Breakdown</h3>
-            <span style="font-size:0.72rem;color:var(--text-muted)">${topLoc.length} end users · ${reqs.length} requests</span>
+            <span style="font-size:0.72rem;color:var(--text-muted)">Top ${topUser.length} end users</span>
           </div>
-          
-          ${topLoc.length===0?`<p style="color:var(--text-muted);font-size:0.82rem;text-align:center;padding:16px">No end user data</p>`:`
+          ${topUser.length===0?`<p style="color:var(--text-muted);font-size:0.82rem;text-align:center;padding:16px">No end user data</p>`:`
             <div class="bar-chart" style="margin-top:4px">
-              ${topLoc.map(([city, data], i) => {
-                const pct = (data.count/maxLoc)*100;
+              ${topUser.map(([name, data], i) => {
+                const pct = (data.count/maxUser)*100;
                 const topDiv = Object.entries(data.divisi).sort((a,b)=>b[1]-a[1])[0];
                 const dColor = topDiv ? (topDiv[0]==='NETCO'?'var(--netco)':topDiv[0]==='OMG'?'var(--omg)':'var(--itsol)') : 'var(--accent)';
                 return `<div class="bar-row">
-                  <div class="bar-label" style="width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.75rem;font-weight:500;color:${dColor}" title="${Utils.escapeHtml(city)}">${Utils.escapeHtml(Utils.truncate(city,18))}</div>
+                  <div class="bar-label" style="width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.75rem;font-weight:500;color:${dColor}" title="${Utils.escapeHtml(name)}">${Utils.escapeHtml(Utils.truncate(name,18))}</div>
                   <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${dColor};opacity:0.7">${pct>35?`<span class="bar-value">${data.count}</span>`:''}</div></div>
                   <span style="font-weight:600;font-size:0.78rem">${data.count}</span>
                 </div>`;
@@ -278,79 +283,24 @@ const Dashboard = {
         </div>
       </div>
 
-
-        <div class="card">
-          <div class="card-header"><h3 class="card-title">Recent Activity</h3></div>
-          ${recent.length===0?`<p style="color:var(--text-muted);font-size:0.82rem;text-align:center;padding:16px">No recent activity</p>`:`
-            <div class="recent-list">
-              ${recent.map(t => {
-                const req = reqs.find(r=>r.id===t.requestId);
-                const ago = Math.max(0,Math.floor((Date.now()-new Date(t.updatedAt))/(1000*60*60*24)));
-                return `<div class="recent-row">
-                  <span class="recent-div" style="color:${Utils.divColor(req?.division)}">${req?.division||'—'}</span>
-                  <span class="recent-subject">${Utils.escapeHtml(Utils.truncate(t.subjectTask,30))}</span>
-                  ${Utils.pipeBadge(t.pipelineStatus)}
-                  <span class="recent-ago">${ago}d</span>
-                </div>`;
-              }).join('')}
-            </div>
-          `}
-        </div>
+      <!-- ======== ROW 6: Recent Activity ======== -->
+      <div class="card">
+        <div class="card-header"><h3 class="card-title">Recent Activity (7 Days)</h3></div>
+        ${recent.length===0?`<p style="color:var(--text-muted);font-size:0.82rem;text-align:center;padding:16px">No recent activity</p>`:`
+          <div class="recent-list">
+            ${recent.map(t => {
+              const req = reqs.find(r=>r.id===t.requestId);
+              const ago = Math.max(0,Math.floor((Date.now()-new Date(t.updatedAt))/(1000*60*60*24)));
+              return `<div class="recent-row">
+                <span class="recent-div" style="color:${Utils.divColor(req?.division)}">${req?.division||'—'}</span>
+                <span class="recent-subject">${Utils.escapeHtml(Utils.truncate(t.subjectTask,30))}</span>
+                ${Utils.pipeBadge(t.pipelineStatus)}
+                <span class="recent-ago">${ago}d</span>
+              </div>`;
+            }).join('')}
+          </div>
+        `}
       </div>
     `;
-  },
-
-  /* ---- SVG Peta Indonesia dengan Bubble Kota ---- */
-  _indoMap(locations, maxCount) {
-    // Simplified Indonesia outline + key cities with coordinates
-    // Map viewBox: 94..141 x -11..6  → scaled to 400x250
-    const mapW = 400, mapH = 250;
-
-    // Scale function: lon,lat → x,y
-    const sx = (lon) => ((lon - 95) / 46) * mapW;
-    const sy = (lat) => ((6 - lat) / 17) * mapH;
-
-    // Simplified outline path (Sumatra, Java, Kalimantan, Sulawesi, Papua)
-    const outline = `M${sx(95.5)},${sy(5.5)}L${sx(105)},${sy(5)}L${sx(106)},${sy(-6)}L${sx(100)},${sy(-7)}L${sx(96)},${sy(-6)}L${sx(95.5)},${sy(5.5)}Z M${sx(105.5)},${sy(5.5)}L${sx(109)},${sy(4)}L${sx(114)},${sy(4)}L${sx(117)},${sy(0)}L${sx(117)},${sy(-4)}L${sx(115)},${sy(-5)}L${sx(109)},${sy(-4)}L${sx(106)},${sy(-7)}L${sx(105.5)},${sy(5.5)}Z M${sx(119)},${sy(4.5)}L${sx(122)},${sy(1)}L${sx(125)},${sy(-2)}L${sx(125)},${sy(-5)}L${sx(120)},${sy(-5)}L${sx(119)},${sy(4.5)}Z M${sx(127)},${sy(0.5)}L${sx(141)},${sy(-3)}L${sx(141)},${sy(-8)}L${sx(130)},${sy(-6)}L${sx(127)},${sy(0.5)}Z`;
-
-    // City database: name, lon, lat
-    const cities = [
-      { name:'Jakarta', lon:106.8, lat:-6.2 },
-      { name:'Surabaya', lon:112.7, lat:-7.2 },
-      { name:'Bandung', lon:107.6, lat:-6.9 },
-      { name:'Medan', lon:98.7, lat:3.6 },
-      { name:'Semarang', lon:110.4, lat:-7.0 },
-      { name:'Makassar', lon:119.4, lat:-5.1 },
-      { name:'Palembang', lon:104.8, lat:-3.0 },
-      { name:'Denpasar', lon:115.2, lat:-8.7 },
-      { name:'Balikpapan', lon:116.8, lat:-1.2 },
-      { name:'Pekanbaru', lon:101.5, lat:0.5 },
-      { name:'Yogyakarta', lon:110.4, lat:-7.8 },
-      { name:'Manado', lon:124.8, lat:1.5 },
-      { name:'Banjarmasin', lon:114.6, lat:-3.3 },
-      { name:'Pontianak', lon:109.3, lat:-0.0 },
-      { name:'Jayapura', lon:140.7, lat:-2.5 }
-    ];
-
-    // Match locations to city coordinates (case-insensitive)
-    const mappedCities = cities.map(c => {
-      const match = locations.find(([loc]) => loc.toLowerCase().includes(c.name.toLowerCase()) || c.name.toLowerCase().includes(loc.toLowerCase()));
-      return { ...c, count: match ? match[1].count : 0, divisi: match ? match[1].divisi : {} };
-    }).filter(c => c.count > 0);
-
-    // Generate city bubbles
-    const bubbles = mappedCities.map(c => {
-      const r = 5 + (c.count / maxCount) * 16;
-      const x = sx(c.lon), y = sy(c.lat);
-      const topDiv = Object.entries(c.divisi).sort((a,b) => b[1]-a[1])[0];
-      const fill = topDiv ? (topDiv[0]==='NETCO'?'#3b82f6':topDiv[0]==='OMG'?'#22c55e':'#a855f7') : '#f59e0b';
-      return `<circle cx="${x}" cy="${y}" r="${r}" fill="${fill}" opacity="0.85" stroke="var(--bg-card)" stroke-width="2"/><text x="${x}" y="${y}" text-anchor="middle" dy="0.35em" fill="#fff" font-size="${r>10?'10':'8'}px" font-weight="600" style="pointer-events:none">${c.count}</text>`;
-    }).join('');
-
-    return `
-      <svg viewBox="0 0 ${mapW} ${mapH}" class="indo-map">
-        <path d="${outline}" fill="var(--bg-input)" stroke="var(--border)" stroke-width="1.5" />
-        ${bubbles}
-      </svg>`;
   }
 };
