@@ -246,7 +246,7 @@ input,select,textarea{font-family:inherit;font-size:inherit}
 .card-title{font-size:0.95rem;font-weight:600;color:var(--text-primary)}
 
 /* ===== KPI (High Contrast) ===== */
-.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-bottom:24px}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px}
 .kpi-card{background:var(--bg-card);border:1px solid var(--border-card);border-radius:var(--radius-lg);padding:20px 22px;transition:border-color var(--transition)}
 .kpi-card:hover{border-color:var(--accent)}
 .kpi-label{font-size:0.74rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:8px;font-weight:600}
@@ -455,6 +455,27 @@ td.actions{display:flex;gap:4px;justify-content:flex-end}
 }
 .sidebar-user-logout:hover { background: var(--red); color: #fff; border-color: var(--red); }
 
+
+/* Dashboard asymmetric grids */
+.dash-grid-211 { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+.dash-grid-121 { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 14px; margin-bottom: 14px; }
+.map-wrap { display: flex; gap: 14px; align-items: flex-start; }
+.indo-map { width: 100%; height: auto; border-radius: 8px; }
+.map-legend { display: flex; flex-direction: column; gap: 6px; font-size: 0.76rem; min-width: 110px; }
+.map-legend-row { display: flex; align-items: center; gap: 8px; }
+.map-dot { border-radius: 50%; flex-shrink: 0; opacity: 0.85; }
+.badge-amber{background:rgba(245,158,11,0.15);color:#f59e0b;border:1px solid rgba(245,158,11,0.25)}
+.badge-cyan{background:rgba(6,182,212,0.15);color:#06b6d4;border:1px solid rgba(6,182,212,0.25)}
+
+@media(max-width:1024px){
+  .dash-grid-211, .dash-grid-121 { grid-template-columns: 1fr 1fr; }
+  .dash-grid-2 { grid-template-columns: 1fr; }
+  .donut-wrap { justify-content: center; }
+  .map-wrap { flex-direction: column; }
+}
+@media(max-width:768px){
+  .dash-grid-211, .dash-grid-121 { grid-template-columns: 1fr; }
+}
 @media(max-width:1024px){
   .dash-grid-2 { grid-template-columns: 1fr; }
   .donut-wrap { justify-content: center; }
