@@ -1,4 +1,4 @@
-/* ============================================================
+﻿/* ============================================================
    EstimatorPro v3 — Tasks View (Flat Master To-Do List)
    ============================================================ */
 
@@ -238,7 +238,7 @@ const Tasks = {
         </div>
         <div class="form-row">
           <div class="form-group"><label class="form-label">End User</label><input type="text" class="form-input" name="endUser" id="taskEndUser" value="${Utils.escapeHtml(task?.endUser||'')}" readonly style="opacity:0.7"></div>
-          <div class="form-group"><label class="form-label">Location / Site</label><input type="text" class="form-input" name="location" value="${Utils.escapeHtml(task?.location||'')}" placeholder="e.g. Jakarta"></div>
+          <div class="form-group"><label class="form-label">Location / Site</label><input type="text" class="form-input" name="location" list="locList" value="${Utils.escapeHtml(task?.location||'')}" placeholder="e.g. Jakarta">${Utils.locationDatalist("locList")}</div>
         </div>
         <div class="form-row">
           <div class="form-group">

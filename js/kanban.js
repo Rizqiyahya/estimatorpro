@@ -1,4 +1,4 @@
-/* ============================================================
+﻿/* ============================================================
    EstimatorPro v3 — Kanban (5 Pipeline Columns, Division-Colored Cards)
    Columns: To Do | In Progress | Review | Done | Revisi
    Card border color = division color (NETCO=Biru, OMG=Hijau, ITSOL=Ungu)

@@ -80,10 +80,10 @@ const Dashboard = {
     const uniqueCust = Object.keys(custMap).length;
     const custColors = ['var(--accent)','var(--blue)','var(--green)','var(--purple)','var(--orange)','var(--cyan)','var(--netco)','var(--pipe-inprog)'];
 
-    // Location breakdown
+    // End User Breakdown
     const locMap = {};
     reqs.forEach(r => {
-      const raw = r.location || '';
+      const raw = r.endUser || '';
       if (!raw.trim()) return;
       raw.split(',').forEach(s => {
         const city = s.trim();
@@ -236,7 +236,7 @@ const Dashboard = {
         </div>
       </div>
 
-      <!-- ======== ROW 5: Customer Breakdown (2) + Location Breakdown (2) ======== -->
+      <!-- ======== ROW 5: Customer Breakdown (2) + End User Breakdown (2) ======== -->
       <div class="dash-grid-2">
         <div class="card">
           <div class="card-header">
@@ -262,10 +262,10 @@ const Dashboard = {
 
         <div class="card">
           <div class="card-header">
-            <h3 class="card-title">Location Breakdown</h3>
-            <span style="font-size:0.72rem;color:var(--text-muted)">${topLoc.length} locations · ${reqs.length} requests</span>
+            <h3 class="card-title">End User Breakdown</h3>
+            <span style="font-size:0.72rem;color:var(--text-muted)">${topLoc.length} end users · ${reqs.length} requests</span>
           </div>
-          ${topLoc.length===0?`<p style="color:var(--text-muted);font-size:0.82rem;text-align:center;padding:16px">No location data</p>`:`
+          ${topLoc.length===0?`<p style="color:var(--text-muted);font-size:0.82rem;text-align:center;padding:16px">No end user data</p>`:`
             <div class="bar-chart" style="margin-top:4px">
               ${topLoc.map(([city, data], i) => {
                 const pct = (data.count/maxLoc)*100;
@@ -304,7 +304,7 @@ const Dashboard = {
   },
 
   /* ---- SVG Peta Indonesia dengan Bubble Kota ---- */
-  _indoMap(locations, maxCount) {
+  _indoMap(end users, maxCount) {
     // Simplified Indonesia outline + key cities with coordinates
     // Map viewBox: 94..141 x -11..6  → scaled to 400x250
     const mapW = 400, mapH = 250;
@@ -335,9 +335,9 @@ const Dashboard = {
       { name:'Jayapura', lon:140.7, lat:-2.5 }
     ];
 
-    // Match locations to city coordinates (case-insensitive)
+    // Match end users to city coordinates (case-insensitive)
     const mappedCities = cities.map(c => {
-      const match = locations.find(([loc]) => loc.toLowerCase().includes(c.name.toLowerCase()) || c.name.toLowerCase().includes(loc.toLowerCase()));
+      const match = end users.find(([loc]) => loc.toLowerCase().includes(c.name.toLowerCase()) || c.name.toLowerCase().includes(loc.toLowerCase()));
       return { ...c, count: match ? match[1].count : 0, divisi: match ? match[1].divisi : {} };
     }).filter(c => c.count > 0);
 

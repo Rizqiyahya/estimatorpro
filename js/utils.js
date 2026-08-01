@@ -145,5 +145,38 @@ const Utils = {
     const doneEntry = history.find(h => h.status === 'done');
     const end = doneEntry ? new Date(doneEntry.at).getTime() : new Date(history[history.length - 1].at).getTime();
     return end - start;
+  },
+
+  /* Indonesian cities for location autocomplete */
+  locationList: [
+    'Multi Site','Jakarta','Surabaya','Bandung','Medan','Semarang','Makassar','Palembang',
+    'Denpasar','Balikpapan','Pekanbaru','Yogyakarta','Manado','Banjarmasin','Pontianak','Jayapura',
+    'Batam','Padang','Malang','Bogor','Tangerang','Bekasi','Depok','Cikarang',
+    'Karawang','Purwakarta','Cirebon','Tegal','Solo','Madiun','Kediri','Jember',
+    'Banyuwangi','Probolinggo','Pasuruan','Mojokerto','Sidoarjo','Gresik','Lamongan','Tuban',
+    'Bojonegoro','Ngawi','Magetan','Ponorogo','Pacitan','Trenggalek','Tulungagung','Blitar',
+    'Lumajang','Bondowoso','Situbondo','Sumenep','Pamekasan','Sampang','Bangkalan','Batu',
+    'Serang','Cilegon','Pandeglang','Lebak','Tigaraksa','BSD','Alam Sutera','Kelapa Gading',
+    'Kuningan','Sudirman','Thamrin','Gatot Subroto','Mampang','Tebet','Pancoran','Cilandak',
+    'Kebayoran','Senayan','Slipi','Grogol','Sunter','Pulo Gadung','Cakung','Daan Mogot',
+    'Cengkareng','Tangerang Selatan','Cibinong','Cianjur','Sukabumi','Tasikmalaya','Garut','Sumedang',
+    'Majalengka','Indramayu','Subang','Kuningan','Ciamis','Pangandaran','Banjar','Cilacap',
+    'Purwokerto','Banyumas','Purbalingga','Banjarnegara','Kebumen','Wonosobo','Temanggung','Magelang',
+    'Boyolali','Klaten','Sragen','Karanganyar','Wonogiri','Grobogan','Blora','Rembang',
+    'Pati','Kudus','Jepara','Demak','Kendal','Batang','Pekalongan','Pemalang',
+    'Brebes','Salatiga','Aceh','Banda Aceh','Lhokseumawe','Langsa','Medan','Binjai',
+    'Pematang Siantar','Tebing Tinggi','Tanjung Balai','Sibolga','Padang Sidempuan','Gunungsitoli','Bukittinggi','Payakumbuh',
+    'Solok','Sawahlunto','Padang Panjang','Pariaman','Dumai','Bengkulu','Jambi','Palembang',
+    'Prabumulih','Lubuklinggau','Pangkal Pinang','Tanjung Pandan','Bandar Lampung','Metro','Pontianak','Singkawang',
+    'Palangkaraya','Banjarbaru','Samarinda','Bontang','Tarakan','Nunukan','Tenggarong','Berau',
+    'Palu','Gorontalo','Kendari','Bau-Bau','Mamuju','Majene','Ambon','Ternate',
+    'Sofifi','Manokwari','Sorong','Timika','Merauke','Biak','Nabire','Wamena',
+    'Mataram','Bima','Sumbawa','Kupang','Atambua','Maumere','Ende','Ruteng',
+    'Labuan Bajo','Waingapu','Tambolaka','Kefamenanu','Soe','Dili','Baucau','Maliana'
+  ],
+
+  /* Render datalist for location autocomplete */
+  locationDatalist(id) {
+    return `<datalist id="${id}">${this.locationList.map(c => `<option value="${c}">`).join('')}</datalist>`;
   }
 };
