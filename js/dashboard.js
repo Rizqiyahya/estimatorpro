@@ -84,6 +84,23 @@ const Dashboard = {
     // Recent activity
     const recent = tasks.filter(t => new Date(t.updatedAt) >= wkAgo).sort((a,b) => new Date(b.updatedAt) - new Date(a.updatedAt)).slice(0, 5);
 
+    // Customer breakdown
+    const custMap = {};
+    reqs.forEach(r => {
+      const c = (r.customer || 'Unknown').trim();
+      if (!custMap[c]) custMap[c] = { total: 0, open: 0, win: 0, lose: 0 };
+      custMap[c].total++;
+      if (r.status === 'open') custMap[c].open++;
+      if (r.status === 'win') custMap[c].win++;
+      if (r.status === 'lose') custMap[c].lose++;
+    });
+    const topCust = Object.entries(custMap)
+      .sort((a,b) => b[1].total - a[1].total)
+      .slice(0, 8);
+    const maxCust = topCust.length ? topCust[0][1].total : 1;
+    const uniqueCust = Object.keys(custMap).length;
+    const custColors = ['var(--accent)','var(--blue)','var(--green)','var(--purple)','var(--orange)','var(--cyan)','var(--netco)','var(--pipe-inprog)'];
+
     // Pipeline bar items
     const pipeItems = [
       { key:'todo', label:'To Do', color:'var(--pipe-todo)', count:pipes.todo },
@@ -236,25 +253,59 @@ const Dashboard = {
         </div>
       </div>
 
-      <!-- Row 4: Recent Activity -->
-      <div class="card">
-        <div class="card-header"><h3 class="card-title">Recent Activity (7 Days)</h3></div>
-        ${recent.length === 0 ? '<p style="color:var(--text-muted);font-size:0.84rem;text-align:center;padding:20px">No recent activity</p>' : `
-          <div class="recent-list">
-            ${recent.map(t => {
-              const req = reqs.find(r => r.id === t.requestId);
-              const ago = Math.max(0, Math.floor((Date.now() - new Date(t.updatedAt)) / (1000*60*60*24)));
-              return `
-                <div class="recent-row">
-                  <span class="recent-div" style="color:${Utils.divColor(req?.division)}">${req?.division||'—'}</span>
-                  <span class="recent-subject">${Utils.escapeHtml(Utils.truncate(t.subjectTask,40))}</span>
-                  ${Utils.pipeBadge(t.pipelineStatus)}
-                  <span class="recent-ago">${ago}d ago</span>
-                </div>
-              `;
-            }).join('')}
+      <!-- Row 4: Customer Breakdown + Recent Activity -->
+      <div class="dash-grid-2">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Customer Breakdown</h3>
+            <span style="font-size:0.76rem;color:var(--text-muted)">${uniqueCust} unique · top ${topCust.length}</span>
           </div>
-        `}
+          ${topCust.length === 0 ? '<p style="color:var(--text-muted);font-size:0.84rem;text-align:center;padding:20px">No customer data yet</p>' : `
+            <div class="bar-chart" style="margin-top:8px">
+              ${topCust.map(([name, stats], i) => {
+                const pct = (stats.total / maxCust) * 100;
+                const winRate = stats.total > 0 ? Math.round((stats.win / stats.total) * 100) : 0;
+                return `
+                  <div class="bar-row">
+                    <div class="bar-label" style="width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500" title="${Utils.escapeHtml(name)}">${Utils.escapeHtml(Utils.truncate(name,18))}</div>
+                    <div class="bar-track">
+                      <div class="bar-fill" style="width:${pct}%;background:${custColors[i]||'var(--accent)'}">
+                        ${pct>30?`<span class="bar-value">${stats.total}</span>`:''}
+                      </div>
+                    </div>
+                    <div class="bar-count" style="color:var(--text-primary);font-weight:600;min-width:36px;text-align:right">${stats.total}</div>
+                  </div>
+                  <div style="display:flex;gap:10px;font-size:0.68rem;color:var(--text-muted);margin:-4px 0 6px 120px">
+                    <span>🟢 ${stats.win} Won</span>
+                    <span>🔵 ${stats.open} Open</span>
+                    ${stats.lose>0?`<span>🔴 ${stats.lose} Lost</span>`:''}
+                    ${stats.total>0?`<span style="color:var(--accent);font-weight:600">${winRate}% WR</span>`:''}
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          `}
+        </div>
+
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">Recent Activity (7 Days)</h3></div>
+          ${recent.length === 0 ? '<p style="color:var(--text-muted);font-size:0.84rem;text-align:center;padding:20px">No recent activity</p>' : `
+            <div class="recent-list">
+              ${recent.map(t => {
+                const req = reqs.find(r => r.id === t.requestId);
+                const ago = Math.max(0, Math.floor((Date.now() - new Date(t.updatedAt)) / (1000*60*60*24)));
+                return `
+                  <div class="recent-row">
+                    <span class="recent-div" style="color:${Utils.divColor(req?.division)}">${req?.division||'—'}</span>
+                    <span class="recent-subject">${Utils.escapeHtml(Utils.truncate(t.subjectTask,40))}</span>
+                    ${Utils.pipeBadge(t.pipelineStatus)}
+                    <span class="recent-ago">${ago}d ago</span>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          `}
+        </div>
       </div>
     `;
     return html;
