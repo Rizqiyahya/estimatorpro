@@ -157,6 +157,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.requests;
 
 -- ============================================================
 -- MIGRATION: Run this if you already have the tables created
--- (adds pipeline_history column for cycle time tracking)
+-- (adds pipeline_history and category columns)
 -- ============================================================
 -- ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS pipeline_history JSONB NOT NULL DEFAULT '[]';
+-- ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT '';

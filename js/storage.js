@@ -1,4 +1,4 @@
-/* ============================================================
+﻿/* ============================================================
    EstimatorPro v3 — Storage (localStorage CRUD)
    ============================================================ */
 
@@ -148,6 +148,7 @@ const Storage = {
   addTask(t) {
     const a = this.getTasks();
     t.id = Utils.genId(); t.createdAt = t.updatedAt = new Date().toISOString();
+    t.category = t.category || '';
     // Initialize pipeline history
     t.pipelineHistory = t.pipelineHistory || [{
       status: t.pipelineStatus || 'todo',

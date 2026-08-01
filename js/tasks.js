@@ -1,11 +1,11 @@
 /* ============================================================
    EstimatorPro v3 — Tasks View (Flat Master To-Do List)
-   All tasks visible, "Request" column links to parent request.
    ============================================================ */
 
 const Tasks = {
   filterDiv: 'all',
   filterPipe: 'all',
+  filterCat: 'all',
   searchText: '',
 
   render() {
@@ -17,6 +17,7 @@ const Tasks = {
       tasks = tasks.filter(t => reqIds.includes(t.requestId));
     }
     if (this.filterPipe !== 'all') tasks = tasks.filter(t => t.pipelineStatus === this.filterPipe);
+    if (this.filterCat !== 'all') tasks = tasks.filter(t => (t.category || '') === this.filterCat);
     if (this.searchText) {
       const q = this.searchText.toLowerCase();
       tasks = tasks.filter(t =>
@@ -52,6 +53,9 @@ const Tasks = {
       <div class="filter-pills">
         ${divPills.map(d => `<button class="filter-pill ${this.filterDiv===d.id?'active':''}" style="${d.style}" onclick="Tasks.filterDiv='${d.id}';Tasks.refresh()">${d.label}</button>`).join('')}
         <span style="flex:1"></span>
+        <select class="form-select" style="width:auto;padding:6px 10px;font-size:0.78rem" onchange="Tasks.filterCat=this.value;Tasks.refresh()">
+          ${Utils.catOptions(this.filterCat === 'all' ? '' : this.filterCat).replace('— Semua Kategori —','📂 All Category')}
+        </select>
         <button class="filter-pill ${this.filterPipe==='all'?'active':''}" onclick="Tasks.filterPipe='all';Tasks.refresh()">All</button>
         <button class="filter-pill ${this.filterPipe==='todo'?'active':''}" onclick="Tasks.filterPipe='todo';Tasks.refresh()">To Do</button>
         <button class="filter-pill ${this.filterPipe==='in_progress'?'active':''}" onclick="Tasks.filterPipe='in_progress';Tasks.refresh()">In Progress</button>
@@ -61,8 +65,7 @@ const Tasks = {
       </div>
 
       <div class="search-bar">
-        <input type="text" class="search-input" placeholder="🔍 Cari task, request, sales..." id="taskSearchInput"
-          value="${Utils.escapeHtml(this.searchText)}">
+        <input type="text" class="search-input" placeholder="🔍 Cari task, request, sales..." id="taskSearchInput" value="${Utils.escapeHtml(this.searchText)}">
       </div>
 
       ${tasks.length === 0 ? `
@@ -79,7 +82,7 @@ const Tasks = {
               <tr>
                 <th>No</th><th>Date</th><th>Request</th><th>Subject Task</th>
                 <th>Sales</th><th>Customer</th><th>End User</th>
-                <th>Division</th><th>Scope</th><th>Location</th>
+                <th>Division</th><th>Category</th><th>Scope</th><th>Location</th>
                 <th>Priority</th><th>Pipeline</th><th>🔗 BoQ</th><th></th>
               </tr>
             </thead>
@@ -126,6 +129,7 @@ const Tasks = {
         <td>${Utils.escapeHtml(t.customer||'—')}</td>
         <td>${Utils.escapeHtml(t.endUser||'—')}</td>
         <td><span class="badge ${Utils.divClass(req?.division)}">${req?.division||'—'}</span></td>
+        <td>${Utils.catBadge(t.category)}</td>
         <td>${scopes.join(' ')||'—'}</td>
         <td>${Utils.escapeHtml(t.location||'—')}</td>
         <td>${t.priority==='High'?'<span class="badge badge-red">High</span>':'<span class="badge badge-neutral">Normal</span>'}</td>
@@ -154,6 +158,7 @@ const Tasks = {
       let match = true;
       if (this.filterDiv !== 'all' && req?.division !== this.filterDiv) match = false;
       if (this.filterPipe !== 'all' && t.pipelineStatus !== this.filterPipe) match = false;
+      if (this.filterCat !== 'all' && (t.category || '') !== this.filterCat) match = false;
       if (q) {
         const hay = [t.subjectTask, t.subjectRequest, t.requestBy, t.customer].join(' ').toLowerCase();
         if (!hay.includes(q)) match = false;
@@ -206,6 +211,21 @@ const Tasks = {
           <div class="form-group"><label class="form-label">End User</label><input type="text" class="form-input" name="endUser" id="taskEndUser" value="${Utils.escapeHtml(task?.endUser||'')}" readonly style="opacity:0.7"></div>
           <div class="form-group"><label class="form-label">Location / Site</label><input type="text" class="form-input" name="location" value="${Utils.escapeHtml(task?.location||'')}" placeholder="e.g. Jakarta"></div>
         </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Category</label>
+            <select class="form-select" name="category">
+              ${Utils.catOptionsNoAll(task?.category||'')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Priority</label>
+            <select class="form-select" name="priority">
+              <option value="Normal" ${task?.priority==='Normal'||!task?'selected':''}>Normal</option>
+              <option value="High" ${task?.priority==='High'?'selected':''}>High</option>
+            </select>
+          </div>
+        </div>
         <div class="form-group">
           <label class="form-label">Scope of Work</label>
           <div style="display:flex;gap:14px;padding:4px 0">
@@ -215,13 +235,6 @@ const Tasks = {
           </div>
         </div>
         <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Priority</label>
-            <select class="form-select" name="priority">
-              <option value="Normal" ${task?.priority==='Normal'||!task?'selected':''}>Normal</option>
-              <option value="High" ${task?.priority==='High'?'selected':''}>High</option>
-            </select>
-          </div>
           <div class="form-group">
             <label class="form-label">Pipeline Status</label>
             <select class="form-select" name="pipelineStatus">
@@ -271,7 +284,8 @@ const Tasks = {
       endUser:f.endUser.value.trim(), scopePL:f.scopePL.checked,
       scopePS:f.scopePS.checked, scopeMS:f.scopeMS.checked,
       location:f.location.value.trim(), priority:f.priority.value,
-      pipelineStatus:f.pipelineStatus.value, boqLink:f.boqLink.value.trim()
+      pipelineStatus:f.pipelineStatus.value, boqLink:f.boqLink.value.trim(),
+      category:f.category.value
     };
     if (!d.subjectTask) return Utils.showToast('Subject Task wajib diisi','error');
     if (!d.requestId) return Utils.showToast('Pilih Request','error');

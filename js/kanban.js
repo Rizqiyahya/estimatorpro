@@ -75,6 +75,7 @@ const Kanban = {
                           ${t.requestBy?`<span>👤 ${Utils.escapeHtml(Utils.truncate(t.requestBy,12))}</span>`:''}
                           ${t.location?`<span>📍 ${Utils.escapeHtml(Utils.truncate(t.location,10))}</span>`:''}
                           ${t.priority==='High'?'<span style="color:var(--red);font-weight:600">⚠High</span>':''}
+                          ${t.category?Utils.catBadge(t.category):''}
                         </div>
                         ${t.boqLink?`<a href="${Utils.escapeHtml(t.boqLink)}" target="_blank" class="link-btn" onclick="event.stopPropagation()" style="font-size:0.68rem;margin-top:3px">🔗 BoQ</a>`:''}
                       </div>
@@ -177,6 +178,7 @@ const Kanban = {
       <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
         ${Utils.pipeBadge(t.pipelineStatus)} ${t.priority==='High'?'<span class="badge badge-red">High</span>':'<span class="badge badge-neutral">Normal</span>'}
         <span class="badge ${Utils.divClass(req?.division)}">${req?.division||'—'}</span>
+        ${Utils.catBadge(t.category)}
       </div>
       <div style="font-size:0.84rem;display:flex;flex-direction:column;gap:6px;color:var(--text-secondary)">
         ${t.subjectRequest?`<div><span style="color:var(--text-muted)">Request:</span> <span style="color:var(--text-primary)">${Utils.escapeHtml(t.subjectRequest)}</span></div>`:''}

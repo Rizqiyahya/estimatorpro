@@ -81,6 +81,41 @@ const Utils = {
     return `<span class="badge ${m[s] || 'badge-neutral'}">${l[s] || s}</span>`;
   },
 
+  /* Task category badge */
+  catBadge(c) {
+    const m = {
+      pembuatan_boq: 'badge-amber',
+      timeline: 'badge-blue',
+      ajuan_solusi_teknis: 'badge-purple',
+      sto: 'badge-green',
+      proposal_teknis: 'badge-cyan'
+    };
+    const l = {
+      pembuatan_boq: 'Pembuatan BoQ',
+      timeline: 'Timeline',
+      ajuan_solusi_teknis: 'Ajuan Solusi Teknis',
+      sto: 'STO',
+      proposal_teknis: 'Proposal Teknis'
+    };
+    if (!c) return '<span class="badge badge-neutral">—</span>';
+    return `<span class="badge ${m[c] || 'badge-neutral'}">${l[c] || c}</span>`;
+  },
+
+  /* All category options for dropdowns */
+  catOptions(selected) {
+    const cats = ['pembuatan_boq','timeline','ajuan_solusi_teknis','sto','proposal_teknis'];
+    const labels = ['Pembuatan BoQ','Timeline','Ajuan Solusi Teknis','STO','Proposal Teknis'];
+    const none = '<option value="">— Semua Kategori —</option>';
+    const opts = cats.map((c,i) => `<option value="${c}" ${c===selected?'selected':''}>${labels[i]}</option>`).join('');
+    return none + opts;
+  },
+
+  catOptionsNoAll(selected) {
+    const cats = ['pembuatan_boq','timeline','ajuan_solusi_teknis','sto','proposal_teknis'];
+    const labels = ['Pembuatan BoQ','Timeline','Ajuan Solusi Teknis','STO','Proposal Teknis'];
+    return '<option value="">— Pilih —</option>' + cats.map((c,i) => `<option value="${c}" ${c===selected?'selected':''}>${labels[i]}</option>`).join('');
+  },
+
   showToast(msg, type = 'info') {
     const c = document.getElementById('toastContainer');
     const t = document.createElement('div');
