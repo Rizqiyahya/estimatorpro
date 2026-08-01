@@ -104,6 +104,12 @@ const Tasks = {
           Tasks.filterAndShow();
         }, 200));
       }
+      // Auto-open Add Task if redirected from Requests with no tasks
+      const addReqId = sessionStorage.getItem('addTaskForRequest');
+      if (addReqId) {
+        sessionStorage.removeItem('addTaskForRequest');
+        Tasks.openModalForRequest(addReqId);
+      }
     }, 50);
 
     return html;
@@ -171,7 +177,30 @@ const Tasks = {
 
   openModal(editId = null) {
     const task = editId ? Storage.getTasks().find(t => t.id === editId) : null;
-    const isEdit = !!task;
+    this._renderModal(task);
+  },
+
+  /* Open Add Task modal pre-filled with a specific request */
+  openModalForRequest(reqId) {
+    const req = Storage.getRequests().find(r => r.id === reqId);
+    if (!req) return;
+    // Create a shell task with pre-filled request data
+    const shell = {
+      requestId: req.id,
+      subjectRequest: req.subject || '',
+      requestBy: req.requestBy || '',
+      customer: req.customer || '',
+      endUser: req.endUser || '',
+      scopePL: req.scopePL || false,
+      scopePS: req.scopePS || false,
+      scopeMS: req.scopeMS || false
+    };
+    this._renderModal(shell);
+  },
+
+  _renderModal(task) {
+    const isEdit = !!(task && task.id);
+    const editId = task?.id || '';
     const requests = Storage.getRequests().sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     const html = `

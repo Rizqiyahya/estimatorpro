@@ -128,7 +128,11 @@ const Requests = {
         <td>${Utils.reqStatusBadge(r.status)}</td>
         <td class="actions">
           <button class="btn-icon btn-xs" onclick="Requests.openModal('${r.id}')" title="Edit">✏️</button>
-          <button class="btn-icon btn-xs" onclick="App.navigate('#tasks')" title="Tasks">📋</button>
+          ${tc === 0 ? `
+            <button class="btn-icon btn-xs" style="color:var(--accent);font-weight:700" onclick="sessionStorage.setItem('addTaskForRequest','${r.id}');App.navigate('#tasks')" title="Add Task">➕</button>
+          ` : `
+            <button class="btn-icon btn-xs" onclick="App.navigate('#tasks')" title="Tasks (${tc})">📋 <span style="font-size:0.6rem">${tc}</span></button>
+          `}
           <button class="btn-icon btn-xs" style="color:var(--red)" onclick="Requests.confirmDelete('${r.id}')" title="Delete">🗑️</button>
         </td>
       </tr>`;
