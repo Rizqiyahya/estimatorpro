@@ -183,7 +183,7 @@ const Kanban = {
         </div>
         <div class="form-row">
           <div class="form-group"><label class="form-label">Priority</label><select class="form-select" name="priority"><option value="Normal" selected>Normal</option><option value="High">High</option></select></div>
-          <div class="form-group"><label class="form-label">Location</label><input type="text" class="form-input" name="location" placeholder="e.g. Jakarta"></div>
+          <div class="form-group"><label class="form-label">Location</label><input type="text" class="form-input" name="location" placeholder="e.g. Jakarta" list="locList">${Utils.locationDatalist('locList')}</div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" onclick="App.closeModal()">Cancel</button>
@@ -198,6 +198,7 @@ const Kanban = {
     const f = document.getElementById('quickForm');
     const req = Storage.getRequests().find(r => r.id === f.requestId.value);
     if (!req) return Utils.showToast('Select a request','error');
+    Utils.addLocation(f.location.value);
     Storage.addTask({
       subjectTask:f.subjectTask.value.trim(), pipelineStatus:f.pipelineStatus.value,
       priority:f.priority.value, location:f.location.value.trim(),

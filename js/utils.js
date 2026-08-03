@@ -147,7 +147,7 @@ const Utils = {
     return end - start;
   },
 
-  /* Indonesian cities for location autocomplete */
+  /* Indonesian cities + industrial estates + landmarks for location autocomplete */
   locationList: [
     'Multi Site','Jakarta','Surabaya','Bandung','Medan','Semarang','Makassar','Palembang',
     'Denpasar','Balikpapan','Pekanbaru','Yogyakarta','Manado','Banjarmasin','Pontianak','Jayapura',
@@ -160,23 +160,67 @@ const Utils = {
     'Kuningan','Sudirman','Thamrin','Gatot Subroto','Mampang','Tebet','Pancoran','Cilandak',
     'Kebayoran','Senayan','Slipi','Grogol','Sunter','Pulo Gadung','Cakung','Daan Mogot',
     'Cengkareng','Tangerang Selatan','Cibinong','Cianjur','Sukabumi','Tasikmalaya','Garut','Sumedang',
-    'Majalengka','Indramayu','Subang','Kuningan','Ciamis','Pangandaran','Banjar','Cilacap',
+    'Majalengka','Indramayu','Subang','Ciamis','Pangandaran','Banjar','Cilacap',
     'Purwokerto','Banyumas','Purbalingga','Banjarnegara','Kebumen','Wonosobo','Temanggung','Magelang',
     'Boyolali','Klaten','Sragen','Karanganyar','Wonogiri','Grobogan','Blora','Rembang',
     'Pati','Kudus','Jepara','Demak','Kendal','Batang','Pekalongan','Pemalang',
-    'Brebes','Salatiga','Aceh','Banda Aceh','Lhokseumawe','Langsa','Medan','Binjai',
+    'Brebes','Salatiga','Banda Aceh','Lhokseumawe','Langsa','Binjai',
     'Pematang Siantar','Tebing Tinggi','Tanjung Balai','Sibolga','Padang Sidempuan','Gunungsitoli','Bukittinggi','Payakumbuh',
-    'Solok','Sawahlunto','Padang Panjang','Pariaman','Dumai','Bengkulu','Jambi','Palembang',
-    'Prabumulih','Lubuklinggau','Pangkal Pinang','Tanjung Pandan','Bandar Lampung','Metro','Pontianak','Singkawang',
+    'Solok','Sawahlunto','Padang Panjang','Pariaman','Dumai','Bengkulu','Jambi','Prabumulih',
+    'Lubuklinggau','Pangkal Pinang','Tanjung Pinang','Bandar Lampung','Metro','Singkawang',
     'Palangkaraya','Banjarbaru','Samarinda','Bontang','Tarakan','Nunukan','Tenggarong','Berau',
     'Palu','Gorontalo','Kendari','Bau-Bau','Mamuju','Majene','Ambon','Ternate',
     'Sofifi','Manokwari','Sorong','Timika','Merauke','Biak','Nabire','Wamena',
     'Mataram','Bima','Sumbawa','Kupang','Atambua','Maumere','Ende','Ruteng',
-    'Labuan Bajo','Waingapu','Tambolaka','Kefamenanu','Soe','Dili','Baucau','Maliana'
+    'Labuan Bajo','Waingapu','Tambolaka','Kefamenanu','Soe','Dili','Baucau','Maliana',
+    'Tabanan','Gianyar','Klungkung','Bangli','Jembrana','Buleleng','Singaraja','Negara',
+    'Kuta','Sanur','Nusa Dua','Jimbaran','Ubud','Canggu','Seminyak','Uluwatu',
+    'Nusa Penida','Nusa Lembongan','Praya','Selong','Dompu','Lombok Barat','Lombok Utara','Lombok Timur',
+    /* Jakarta neighborhoods */
+    'Jakarta Utara','Jakarta Barat','Jakarta Selatan','Jakarta Timur','Jakarta Pusat','Kepulauan Seribu',
+    'Pluit','Penjaringan','Ancol','Koja','Cilincing','Tanjung Priok','Pademangan','Kemayoran',
+    'Sawah Besar','Gambir','Senen','Menteng','Johar Baru','Cempaka Putih','Tanah Abang','Bendungan Hilir',
+    'Setiabudi','Karet','Palmerah','Kebon Jeruk','Kembangan','Meruya','Pesanggrahan','Cipulir',
+    'Blok M','Kemang','Pondok Indah','Fatmawati','Lebak Bulus','Ragunan','Pasar Minggu','Jagakarsa',
+    'Kalibata','Rawa Mangun','Salemba','Utan Kayu','Ciganjur','Cipedak','Pancoran Mas','Jatinegara',
+    'Matraman','Duren Sawit','Jatiwaringin','Kramat Jati','Makasar','Cawang','Halim','Pasar Rebo',
+    'Ciracas','Cililitan','Rawa Bunga','Cikini','Menteng','Sudirman Central Business District','SCBD','Mega Kuningan',
+    'Kuningan City','Rasuna Said','Casablanca','TB Simatupang','Wijaya','Gandaria','Pondok Labu','Cilandak KKO',
+    'Pasar Jumat','Keerom','Kalideres','Duri','Meruya','Pesing','Kebon Jeruk','Cipete',
+    'Pakubuwono','Bundaran HI','Senopati','Gatot Soebroto','Jalan Asia Afrika','Thamrin City','Sarinah','Grand Indonesia',
+    'Plaza Indonesia','Citywalk Sudirman','Senayan City','Pacific Place','Kota Kasablanka','Menara BCA','Menara Astra','Blok S Plaza',
+    'Gelora Bung Karno','AEON BSD','AEON Jakarta Garden','Lippo Mall Puri','Mall Taman Anggrek','Central Park','Kuningan City','WTC Mangga Dua',
+    /* Industrial estates / kawasan industri */
+    'MM2100','EJIP','KIIC','Delta Silicon','Jababeka','Lippo Cikarang','Hyundai Cikarang','Greenland International',
+    'KBN Berikat Nusantara','Batamindo','Bintan Eco','Rempang','KEK Mandalika','Kota Deltamas','Merak Armada','Balaraja',
+    'Foresta','BSD City','Cikunir','Cibubur','Bintaro','Parung','Sawangan','Lengkong',
+    'Jatiasih','Tambun','Cibitung','Pondok Gede','Klp Muncang','Gandaria City','Kemang Village','Senayan Golf'
   ],
+
+  /* ---- Adaptive location memory ----
+     Custom locations typed by the user are remembered and injected
+     into the datalist so suggestions grow with real site names. */
+  _locationKey: 'ep2_custom_locations',
+  getCustomLocations() {
+    try { return JSON.parse(localStorage.getItem(this._locationKey)) || []; } catch(e) { return []; }
+  },
+  addLocation(str) {
+    if (!str) return;
+    const s = String(str).trim();
+    if (!s) return;
+    const list = this.getCustomLocations();
+    if (list.includes(s)) return;
+    list.push(s);
+    if (list.length > 100) list.splice(0, list.length - 100);
+    try { localStorage.setItem(this._locationKey, JSON.stringify(list)); } catch(e) {}
+  },
+  getLocations() {
+    const custom = this.getCustomLocations().filter(c => !this.locationList.includes(c));
+    return custom.length ? this.locationList.concat(custom) : this.locationList;
+  },
 
   /* Render datalist for location autocomplete */
   locationDatalist(id) {
-    return `<datalist id="${id}">${this.locationList.map(c => `<option value="${c}">`).join('')}</datalist>`;
+    return `<datalist id="${id}">${this.getLocations().map(c => `<option value="${Utils.escapeHtml(c)}">`).join('')}</datalist>`;
   }
 };

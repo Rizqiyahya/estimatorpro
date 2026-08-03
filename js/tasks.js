@@ -336,6 +336,9 @@ const Tasks = {
     if (!d.subjectTask) return Utils.showToast('Subject Task wajib diisi','error');
     if (!d.requestId) return Utils.showToast('Pilih Request','error');
 
+    // Remember custom location for future autocomplete suggestions
+    Utils.addLocation(d.location);
+
     if (editId) { Storage.updateTask(editId,d); Utils.showToast('Task updated','success'); }
     else { Storage.addTask(d); Utils.showToast('Task created','success'); }
     App.closeModal(); this.refresh();

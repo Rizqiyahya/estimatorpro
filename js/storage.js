@@ -100,7 +100,12 @@ const Storage = {
       ]);
       // Merge: cloud wins for existing, keep local non-conflicting
       if (reqs.length) this.saveRequests(reqs);
-      if (tasks.length) this.saveTasks(tasks);
+      if (tasks.length) {
+        this.saveTasks(tasks);
+        // Seed custom locations from cloud tasks so the autocomplete list grows
+        // on any browser that syncs (adaptive location memory)
+        tasks.forEach(t => { if (t.location) Utils.addLocation(t.location); });
+      }
       if (ests.length) this.saveEstimates(ests);
       console.log('📥 Synced from cloud:', reqs.length, 'reqs,', tasks.length, 'tasks,', ests.length, 'estimates');
     } catch(e) { console.warn('Cloud sync failed:', e.message); }

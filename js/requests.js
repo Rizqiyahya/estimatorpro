@@ -75,7 +75,7 @@ const Requests = {
             <thead>
               <tr>
                 <th>No</th><th>Date</th><th>Subject</th><th>Email</th><th>Sales</th>
-                <th>Customer</th><th>End User</th><th>Division</th><th>Scope</th>
+                <th>Customer</th><th>End User</th><th>Division</th>
                 <th>Status</th><th></th>
               </tr>
             </thead>
@@ -106,10 +106,6 @@ const Requests = {
   },
 
   renderRow(r) {
-    const scopes = [];
-    if (r.scopePL) scopes.push('<span class="badge badge-blue" style="font-size:0.65rem">PL</span>');
-    if (r.scopePS) scopes.push('<span class="badge badge-purple" style="font-size:0.65rem">PS</span>');
-    if (r.scopeMS) scopes.push('<span class="badge badge-cyan" style="font-size:0.65rem">MS</span>');
     const tc = Storage.getTasksByRequest(r.id).length;
     return `
       <tr data-rid="${r.id}" data-div="${r.division}" data-status="${r.status}">
@@ -124,7 +120,6 @@ const Requests = {
         <td>${Utils.escapeHtml(r.customer||'—')}</td>
         <td>${Utils.escapeHtml(r.endUser||'—')}</td>
         <td><span class="badge ${Utils.divClass(r.division)}">${r.division||'—'}</span></td>
-        <td>${scopes.join(' ')||'—'}</td>
         <td>${Utils.reqStatusBadge(r.status)}</td>
         <td class="actions">
           <button class="btn-icon btn-xs" onclick="Requests.openModal('${r.id}')" title="Edit">✏️</button>
