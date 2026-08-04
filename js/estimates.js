@@ -69,7 +69,7 @@ const Estimates = {
               Add Item
             </button>
           ` : ''}
-          ${allEstimates.length > 0 ? `<button class="btn btn-secondary btn-sm" onclick="Estimates.exportBoQ()">📄 Export</button>` : ''}
+          ${allEstimates.length > 0 ? `<button class="btn btn-secondary btn-sm" onclick="Estimates.exportBoQ()">📊 Export Excel</button>` : ''}
         </div>
       </div>
 
@@ -289,33 +289,140 @@ const Estimates = {
   exportBoQ() {
     const allEstimates = Storage.getEstimates();
     if (allEstimates.length === 0) return Utils.showToast('No data to export', 'error');
+    if (typeof XLSX === 'undefined') return Utils.showToast('Excel library belum termuat. Cek koneksi internet.', 'error');
 
+    const tasks = Storage.getTasks();
+    const requests = Storage.getRequests();
     const calc = (cat) => allEstimates.filter(e => e.category === cat).reduce((s, e) => s + (parseInt(e.totalPrice) || (parseInt(e.quantity) * parseInt(e.unitPrice)) || 0), 0);
-    const lines = [
-      `========================================`,
-      `  BILL OF QUANTITY (BoQ) — SUMMARY`,
-      `========================================`,
-      `Date: ${new Date().toLocaleDateString('id-ID')}`,
-      `----------------------------------------`,
-    ];
-    allEstimates.forEach(e => {
-      const total = parseInt(e.totalPrice) || (parseInt(e.quantity) * parseInt(e.unitPrice)) || 0;
-      lines.push(`${Utils.truncate(e.item, 30).padEnd(30)} | ${String(e.quantity||'-').padEnd(6)} ${String(e.unit||'').padEnd(5)} | ${String(Utils.formatCurrency(e.unitPrice)).padEnd(14)} | ${Utils.formatCurrency(total)}`);
-    });
-    lines.push(`----------------------------------------`);
-    lines.push(`Perangkat Utama   : ${Utils.formatCurrency(calc('utama'))}`);
-    lines.push(`Material Pendukung: ${Utils.formatCurrency(calc('material'))}`);
-    lines.push(`Jasa/Implementasi : ${Utils.formatCurrency(calc('jasa'))}`);
-    lines.push(`Manage Service    : ${Utils.formatCurrency(calc('ms'))}`);
-    lines.push(`GRAND TOTAL       : ${Utils.formatCurrency(calc('utama') + calc('material') + calc('jasa') + calc('ms'))}`);
-    lines.push(`========================================`);
+    const totalUtama = calc('utama'), totalMaterial = calc('material'), totalJasa = calc('jasa'), totalMS = calc('ms');
+    const grand = totalUtama + totalMaterial + totalJasa + totalMS;
+    const catLabels = { utama: 'Perangkat Utama', material: 'Material Pendukung', jasa: 'Jasa / Implementasi', ms: 'Manage Service' };
+    const today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 
-    const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `BoQ_Summary_${new Date().toISOString().split('T')[0]}.txt`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-    Utils.showToast('BoQ exported', 'success');
+    /* ============ Sheet 1: Summary ============ */
+    const summaryRows = [
+      ['BILL OF QUANTITY (BoQ) — SUMMARY'],
+      ['Tanggal', today],
+      [],
+      ['Perangkat Utama', totalUtama],
+      ['Material Pendukung', totalMaterial],
+      ['Jasa / Implementasi', totalJasa],
+      ['Manage Service', totalMS],
+      ['GRAND TOTAL', grand],
+      [],
+      ['RINCIAN PER TASK'],
+      ['Task', 'Division', 'Perangkat Utama', 'Material', 'Jasa', 'MS', 'Total']
+    ];
+
+    // Per-task breakdown
+    const taskEstMap = {};
+    allEstimates.forEach(e => {
+      if (!taskEstMap[e.taskId]) taskEstMap[e.taskId] = { utama: 0, material: 0, jasa: 0, ms: 0 };
+      taskEstMap[e.taskId][e.category] += parseInt(e.totalPrice) || (parseInt(e.quantity) * parseInt(e.unitPrice)) || 0;
+    });
+    Object.entries(taskEstMap).forEach(([tid, est]) => {
+      const t = tasks.find(x => x.id === tid);
+      const req = requests.find(r => r.id === t?.requestId);
+      summaryRows.push([
+        t?.subjectTask || tid, req?.division || '—',
+        est.utama, est.material, est.jasa, est.ms,
+        est.utama + est.material + est.jasa + est.ms
+      ]);
+    });
+    summaryRows.push(['TOTAL', '', totalUtama, totalMaterial, totalJasa, totalMS, grand]);
+
+    const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows);
+    wsSummary['!cols'] = [{ wch: 40 }, { wch: 14 }, { wch: 18 }, { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 18 }];
+    wsSummary['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 6 } }];
+
+    /* ============ Sheet 2: Detail Items ============ */
+    const detailRows = [
+      ['BILL OF QUANTITY (BoQ) — DETAIL ITEMS'],
+      ['Tanggal', today],
+      [],
+      ['No', 'Item', 'Kategori', 'Task', 'Qty', 'Unit', 'Harga Satuan (Rp)', 'Total (Rp)', 'Notes']
+    ];
+    allEstimates.forEach((e, i) => {
+      const t = tasks.find(x => x.id === e.taskId);
+      const total = parseInt(e.totalPrice) || (parseInt(e.quantity) * parseInt(e.unitPrice)) || 0;
+      detailRows.push([
+        i + 1, e.item, catLabels[e.category] || e.category, t?.subjectTask || '—',
+        e.quantity || 0, e.unit || '', parseInt(e.unitPrice) || 0, total, e.notes || ''
+      ]);
+    });
+    detailRows.push([]);
+    detailRows.push(['TOTAL', '', '', '', '', '', '', grand, '']);
+    detailRows.push(['', '', '', 'Perangkat Utama', totalUtama]);
+    detailRows.push(['', '', '', 'Material', totalMaterial]);
+    detailRows.push(['', '', '', 'Jasa', totalJasa]);
+    detailRows.push(['', '', '', 'MS', totalMS]);
+
+    const wsDetail = XLSX.utils.aoa_to_sheet(detailRows);
+    wsDetail['!cols'] = [
+      { wch: 5 }, { wch: 45 }, { wch: 20 }, { wch: 35 },
+      { wch: 8 }, { wch: 8 }, { wch: 16 }, { wch: 18 }, { wch: 30 }
+    ];
+
+    /* ============ Styling (header bold + number format) ============ */
+    const HDR_FILL = { patternType: 'solid', fgColor: { rgb: '1F4E79' } };
+    const HDR_FONT = { bold: true, color: { rgb: 'FFFFFF' } };
+    const TOTAL_FILL = { patternType: 'solid', fgColor: { rgb: 'D9E2F3' } };
+
+    // Sheet 1: title row + summary + table header
+    [wsSummary, wsDetail].forEach((ws, wi) => {
+      if (!ws['!ref']) return;
+      const range = XLSX.utils.decode_range(ws['!ref']);
+      const titleRow = wi === 0 ? 0 : 0;
+      if (ws[`A${titleRow + 1}`]) ws[`A${titleRow + 1}`].s = { font: { bold: true, sz: 14 } };
+      // table header rows
+      const headerRow = wi === 0 ? 11 : 3; // 0-based
+      for (let c = 0; c <= range.e.c; c++) {
+        const addr = XLSX.utils.encode_cell({ r: headerRow, c });
+        if (ws[addr]) ws[addr].s = { fill: HDR_FILL, font: HDR_FONT, alignment: { horizontal: 'center' } };
+      }
+    });
+    // number format for money columns
+    const moneyColsS1 = [1, 2, 3, 4, 5, 6];
+    const s1Range = XLSX.utils.decode_range(wsSummary['!ref']);
+    for (let r = 3; r <= s1Range.e.r; r++) {
+      moneyColsS1.forEach(c => {
+        const addr = XLSX.utils.encode_cell({ r, c });
+        if (wsSummary[addr] && typeof wsSummary[addr].v === 'number') {
+          wsSummary[addr].z = '#,##0';
+        }
+      });
+    }
+    // bold grand total row (row 7 = index 6, 0-based)
+    const s1TotalIdx = summaryRows.findIndex(r => r[0] === 'GRAND TOTAL');
+    for (let c = 0; c <= 1; c++) {
+      const addr = XLSX.utils.encode_cell({ r: s1TotalIdx, c });
+      if (wsSummary[addr]) wsSummary[addr].s = { font: { bold: true }, fill: TOTAL_FILL };
+    }
+    const s1GrandIdx = summaryRows.findIndex(r => r[0] === 'TOTAL');
+    for (let c = 0; c <= s1Range.e.c; c++) {
+      const addr = XLSX.utils.encode_cell({ r: s1GrandIdx, c });
+      if (wsSummary[addr]) wsSummary[addr].s = { font: { bold: true }, fill: TOTAL_FILL };
+    }
+
+    // Sheet 2: number formats for qty/money
+    const dRange = XLSX.utils.decode_range(wsDetail['!ref']);
+    for (let r = 4; r <= dRange.e.r; r++) {
+      [6, 7].forEach(c => {
+        const addr = XLSX.utils.encode_cell({ r, c });
+        if (wsDetail[addr] && typeof wsDetail[addr].v === 'number') wsDetail[addr].z = '#,##0';
+      });
+    }
+    const dTotalIdx = detailRows.findIndex(r => r[0] === 'TOTAL');
+    for (let c = 0; c <= 8; c++) {
+      const addr = XLSX.utils.encode_cell({ r: dTotalIdx, c });
+      if (wsDetail[addr]) wsDetail[addr].s = { font: { bold: true }, fill: TOTAL_FILL };
+    }
+
+    /* ============ Write file ============ */
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+    XLSX.utils.book_append_sheet(wb, wsDetail, 'Detail Items');
+    XLSX.writeFile(wb, `BoQ_${new Date().toISOString().split('T')[0]}.xlsx`);
+    Utils.showToast('BoQ exported as Excel (.xlsx)', 'success');
   }
 };
