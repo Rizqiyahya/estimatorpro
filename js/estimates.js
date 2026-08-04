@@ -191,6 +191,11 @@ const Estimates = {
     document.getElementById('mainContent').innerHTML = this.render();
   },
 
+  openForTask(taskId) {
+    this.selectedTaskId = taskId;
+    App.navigate('#estimates');
+  },
+
   refresh() { document.getElementById('mainContent').innerHTML = this.render(); },
 
   openModal(editId = null) {

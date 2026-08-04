@@ -480,3 +480,35 @@ td.actions{display:flex;gap:4px;justify-content:flex-end}
   .dash-grid-2 { grid-template-columns: 1fr; }
   .donut-wrap { justify-content: center; }
 }
+
+/* ===== WBS Builder ===== */
+.wbs-tree { display:flex; flex-direction:column; gap:10px; }
+.wbs-phase { background:var(--bg-secondary); border:1px solid var(--border); border-radius:var(--radius-lg); padding:12px; }
+.wbs-phase-head, .wbs-deliverable-head { display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+.wbs-phase-title, .wbs-deliverable-title { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.wbs-level-tag { color:#fff; font-size:0.62rem; font-weight:700; padding:2px 8px; border-radius:4px; letter-spacing:0.3px; }
+.wbs-level-2 { background:var(--purple); }
+.wbs-deliverables { margin-left:22px; margin-top:10px; display:flex; flex-direction:column; gap:8px; }
+.wbs-deliverable { border-left:2px dashed var(--border); padding-left:12px; }
+.wbs-actions { display:flex; gap:4px; }
+.btn-xs { padding:3px 7px; font-size:0.66rem; border-radius:5px; }
+.wbs-activities { margin-top:8px; display:flex; flex-direction:column; gap:4px; }
+.wbs-activity { display:flex; align-items:center; gap:8px; padding:5px 8px; background:var(--bg-tertiary); border-radius:6px; font-size:0.8rem; }
+.wbs-activity-dot { width:8px; height:8px; border-radius:50%; background:var(--accent); flex-shrink:0; }
+.wbs-date { font-size:0.7rem; color:var(--text-muted); font-family:var(--font-mono); }
+.wbs-dur { font-size:0.7rem; color:var(--success); font-family:var(--font-mono); }
+.wbs-none { font-size:0.74rem; color:var(--text-muted); padding:6px 0; }
+
+/* ===== Gantt Chart ===== */
+.gantt-card { overflow:hidden; }
+.gantt-scroll { overflow-x:auto; }
+.gantt-stats { display:flex; gap:8px; }
+.gantt-stat { font-size:0.72rem; color:var(--text-muted); background:var(--bg-tertiary); padding:4px 10px; border-radius:10px; font-family:var(--font-mono); }
+.gantt-card svg text { font-family:var(--font-mono); }
+.print-title { font-size:1.3rem; font-weight:700; margin-bottom:14px; }
+@media print {
+  body * { visibility:hidden !important; }
+  #printArea, #printArea * { visibility:visible !important; }
+  #printArea { display:block !important; position:absolute; left:0; top:0; width:100%; }
+  .gantt-scroll { overflow:visible !important; }
+}

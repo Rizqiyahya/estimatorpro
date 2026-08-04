@@ -81,21 +81,40 @@ const Utils = {
     return `<span class="badge ${m[s] || 'badge-neutral'}">${l[s] || s}</span>`;
   },
 
+  /* Normalize legacy category keys to new tool-aligned keys */
+  normalizeCat(c) {
+    const map = { pembuatan_boq:'boq', ajuan_solusi_teknis:'wbs', proposal_teknis:'proptek' };
+    return map[c] || c;
+  },
+
+  /* Map task category → tool view route */
+  toolForCategory(cat) {
+    const map = { boq:'#estimates', wbs:'#wbs', timeline:'#gantt', sto:'#sto', proptek:'#proptek' };
+    return map[this.normalizeCat(cat)] || null;
+  },
+
+  /* Human label of the tool for a category */
+  toolLabel(cat) {
+    const map = { boq:'Estimasi', wbs:'WBS Builder', timeline:'Gantt Chart', sto:'STO', proptek:'Proptek' };
+    return map[this.normalizeCat(cat)] || null;
+  },
+
   /* Task category badge */
   catBadge(c) {
+    c = this.normalizeCat(c);
     const m = {
-      pembuatan_boq: 'badge-amber',
+      boq: 'badge-amber',
+      wbs: 'badge-purple',
       timeline: 'badge-blue',
-      ajuan_solusi_teknis: 'badge-purple',
       sto: 'badge-green',
-      proposal_teknis: 'badge-cyan'
+      proptek: 'badge-cyan'
     };
     const l = {
-      pembuatan_boq: 'Pembuatan BoQ',
+      boq: 'BoQ',
+      wbs: 'WBS',
       timeline: 'Timeline',
-      ajuan_solusi_teknis: 'Ajuan Solusi Teknis',
       sto: 'STO',
-      proposal_teknis: 'Proposal Teknis'
+      proptek: 'Proptek'
     };
     if (!c) return '<span class="badge badge-neutral">—</span>';
     return `<span class="badge ${m[c] || 'badge-neutral'}">${l[c] || c}</span>`;
@@ -103,16 +122,16 @@ const Utils = {
 
   /* All category options for dropdowns */
   catOptions(selected) {
-    const cats = ['pembuatan_boq','timeline','ajuan_solusi_teknis','sto','proposal_teknis'];
-    const labels = ['Pembuatan BoQ','Timeline','Ajuan Solusi Teknis','STO','Proposal Teknis'];
+    const cats = ['boq','wbs','timeline','sto','proptek'];
+    const labels = ['BoQ','WBS','Timeline','STO','Proptek'];
     const none = '<option value="">— Semua Kategori —</option>';
     const opts = cats.map((c,i) => `<option value="${c}" ${c===selected?'selected':''}>${labels[i]}</option>`).join('');
     return none + opts;
   },
 
   catOptionsNoAll(selected) {
-    const cats = ['pembuatan_boq','timeline','ajuan_solusi_teknis','sto','proposal_teknis'];
-    const labels = ['Pembuatan BoQ','Timeline','Ajuan Solusi Teknis','STO','Proposal Teknis'];
+    const cats = ['boq','wbs','timeline','sto','proptek'];
+    const labels = ['BoQ','WBS','Timeline','STO','Proptek'];
     return '<option value="">— Pilih —</option>' + cats.map((c,i) => `<option value="${c}" ${c===selected?'selected':''}>${labels[i]}</option>`).join('');
   },
 

@@ -250,6 +250,7 @@ const Kanban = {
       </div>
       ` : ''}
       <div class="modal-footer">
+        ${Utils.toolForCategory(t.category) ? `<button class="btn btn-primary btn-sm" onclick="Tasks.openTool('${t.id}')">🧰 ${Utils.toolLabel(t.category)}</button>` : ''}
         <button class="btn btn-danger btn-sm" onclick="Storage.deleteTask('${t.id}');App.closeModal();Kanban.refresh()">Delete</button>
         <button class="btn btn-secondary" onclick="App.closeModal()">Close</button>
       </div>

@@ -72,6 +72,9 @@ const Storage = {
         else if (op === 'addEst') await DB.addEstimate(data);
         else if (op === 'updEst') await DB.updateEstimate(data.id, data);
         else if (op === 'delEst') await DB.deleteEstimate(data.id);
+        else if (op === 'addWbs') await DB.addWbsItem(data);
+        else if (op === 'updWbs') await DB.updateWbsItem(data.id, data);
+        else if (op === 'delWbs') await DB.deleteWbsItem(data.id);
       } catch(e) { console.warn('Cloud sync error:', e.message); }
     })();
   },
@@ -83,10 +86,12 @@ const Storage = {
       const reqs = this.getRequests();
       const tasks = this.getTasks();
       const ests = this.getEstimates();
+      const wbs = this.getWbs();
       let pushed = 0;
       for (const r of reqs) { try { await DB.addRequest(r); pushed++; } catch(e) { /* dup ok */ } }
       for (const t of tasks) { try { await DB.addTask(t); pushed++; } catch(e) { /* dup ok */ } }
       for (const e of ests) { try { await DB.addEstimate(e); pushed++; } catch(e) { /* dup ok */ } }
+      for (const w of wbs) { try { await DB.addWbsItem(w); pushed++; } catch(e) { /* dup ok */ } }
       if (pushed) console.log('📤 Pushed', pushed, 'local items to cloud');
     } catch(e) { console.warn('Push local failed:', e.message); }
   },
@@ -95,8 +100,8 @@ const Storage = {
   async syncFromCloud() {
     if (!DB.isCloud()) return;
     try {
-      const [reqs, tasks, ests] = await Promise.all([
-        DB.getRequests(), DB.getTasks(), DB.getEstimates()
+      const [reqs, tasks, ests, wbs] = await Promise.all([
+        DB.getRequests(), DB.getTasks(), DB.getEstimates(), DB.getWbs()
       ]);
       // Merge: cloud wins for existing, keep local non-conflicting
       if (reqs.length) this.saveRequests(reqs);
@@ -107,6 +112,7 @@ const Storage = {
         tasks.forEach(t => { if (t.location) Utils.addLocation(t.location); });
       }
       if (ests.length) this.saveEstimates(ests);
+      if (wbs.length) this.saveWbs(wbs);
       console.log('📥 Synced from cloud:', reqs.length, 'reqs,', tasks.length, 'tasks,', ests.length, 'estimates');
     } catch(e) { console.warn('Cloud sync failed:', e.message); }
   },
@@ -119,6 +125,7 @@ const Storage = {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, () => this.syncFromCloud())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => this.syncFromCloud())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'estimates' }, () => this.syncFromCloud())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'wbs' }, () => this.syncFromCloud())
       .subscribe();
     console.log('🔄 Realtime sync active');
     return sub;
@@ -205,6 +212,24 @@ const Storage = {
   deleteEstimate(id) { this.saveEstimates(this.getEstimates().filter(e => e.id !== id)); this._cloudPush('delEst', { id }); },
   getEstimatesByTask(tid) { return this.getEstimates().filter(e => e.taskId === tid); },
 
+  // WBS (Work Breakdown Structure)
+  getWbs() { return this._load('ep2_wbs'); },
+  saveWbs(d) { this._save('ep2_wbs', d); },
+  addWbsItem(w) {
+    const a = this.getWbs();
+    w.id = Utils.genId(); w.level = w.level || 1; w.createdAt = new Date().toISOString();
+    a.push(w); this.saveWbs(a);
+    this._cloudPush('addWbs', w);
+    return w;
+  },
+  updateWbsItem(id, u) {
+    const a = this.getWbs(); const i = a.findIndex(w => w.id === id);
+    if (i!==-1) { a[i] = {...a[i],...u}; this.saveWbs(a); this._cloudPush('updWbs', a[i]); return a[i]; }
+    return null;
+  },
+  deleteWbsItem(id) { this.saveWbs(this.getWbs().filter(w => w.id !== id)); this._cloudPush('delWbs', { id }); },
+  getWbsByTask(tid) { return this.getWbs().filter(w => w.taskId === tid); },
+
   // Settings
   getSettings() {
     const d = { theme: 'dark' };
@@ -213,12 +238,13 @@ const Storage = {
   saveSettings(s) { this._save('ep2_settings', s); },
 
   // Export / Import / Reset
-  exportAll() { return { version:'2.0', exportedAt:new Date().toISOString(), requests:this.getRequests(), tasks:this.getTasks(), estimates:this.getEstimates() }; },
+  exportAll() { return { version:'2.0', exportedAt:new Date().toISOString(), requests:this.getRequests(), tasks:this.getTasks(), estimates:this.getEstimates(), wbs:this.getWbs() }; },
   importAll(data) {
     if (!data || data.version !== '2.0') throw new Error('Invalid format');
     if (data.requests) this.saveRequests(data.requests);
     if (data.tasks) this.saveTasks(data.tasks);
     if (data.estimates) this.saveEstimates(data.estimates);
+    if (data.wbs) this.saveWbs(data.wbs);
   },
-  resetAll() { ['ep2_requests','ep2_tasks','ep2_estimates'].forEach(k => localStorage.removeItem(k)); }
+  resetAll() { ['ep2_requests','ep2_tasks','ep2_estimates','ep2_wbs'].forEach(k => localStorage.removeItem(k)); }
 };

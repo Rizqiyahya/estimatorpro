@@ -103,6 +103,40 @@ CREATE TABLE public.estimates (
 );
 
 -- ============================================================
+-- WBS (Work Breakdown Structure)
+-- Hierarchy: Level 1 (Fase) → Level 2 (Deliverable) → Level 3 (Aktivitas)
+-- Aktivitas (L3) with start_date + duration_days → feeds Gantt Chart
+-- ============================================================
+CREATE TABLE public.wbs (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  task_id UUID NOT NULL REFERENCES public.tasks(id) ON DELETE CASCADE,
+  parent_id UUID REFERENCES public.wbs(id) ON DELETE CASCADE,
+  level INT NOT NULL DEFAULT 1 CHECK (level IN (1, 2, 3)),
+  name TEXT NOT NULL DEFAULT '',
+  start_date DATE,
+  duration_days INT,
+  seq INT NOT NULL DEFAULT 0,
+  created_by UUID REFERENCES public.profiles(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Performance index for frequently-queried foreign key
+CREATE INDEX idx_wbs_task_id ON public.wbs(task_id);
+CREATE INDEX idx_wbs_parent_id ON public.wbs(parent_id);
+
+-- RLS: Estimator full access, Manager read-only
+ALTER TABLE public.wbs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Estimator full access" ON public.wbs FOR ALL USING (
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'estimator')
+);
+CREATE POLICY "Manager read only" ON public.wbs FOR SELECT USING (
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'manager')
+);
+
+-- Enable realtime for WBS (live Kanban-style updates)
+ALTER PUBLICATION supabase_realtime ADD TABLE public.wbs;
+
+-- ============================================================
 -- INDEXES
 -- ============================================================
 CREATE INDEX idx_requests_division ON public.requests(division);

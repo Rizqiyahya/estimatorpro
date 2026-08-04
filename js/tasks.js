@@ -156,6 +156,7 @@ const Tasks = {
           ${t.boqLink?`<a href="${Utils.escapeHtml(t.boqLink)}" target="_blank" class="link-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>Open</a>`:'<span style="color:var(--text-muted);font-size:0.72rem">—</span>'}
         </td>
         <td class="actions">
+          ${Utils.toolForCategory(t.category) ? `<button class="btn-icon btn-xs" style="color:var(--accent)" onclick="Tasks.openTool('${t.id}')" title="Buka tool: ${Utils.toolLabel(t.category)}">🧰</button>` : ''}
           <button class="btn-icon btn-xs" onclick="Tasks.openModal('${t.id}')" title="Edit">✏️</button>
           <button class="btn-icon btn-xs" style="color:var(--red)" onclick="Tasks.confirmDelete('${t.id}')" title="Delete">🗑️</button>
         </td>
@@ -353,5 +354,17 @@ const Tasks = {
         <button class="btn btn-secondary" onclick="App.closeModal()">Cancel</button>
         <button class="btn btn-danger" onclick="Storage.deleteTask('${id}');App.closeModal();Tasks.refresh()">Delete</button>
       </div>`);
+  },
+
+  /* Open the tool that matches this task's category */
+  openTool(taskId) {
+    const t = Storage.getTasks().find(x => x.id === taskId);
+    if (!t) return;
+    const route = Utils.toolForCategory(t.category);
+    if (!route) return Utils.showToast('Task ini tidak punya tool terkait','info');
+    if (route === '#wbs') Wbs.openForTask(taskId);
+    else if (route === '#gantt') Gantt.openForTask(taskId);
+    else if (route === '#estimates') Estimates.openForTask(taskId);
+    else App.navigate(route);
   }
 };

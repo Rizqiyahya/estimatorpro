@@ -142,7 +142,8 @@ const App = {
     const main = document.getElementById('mainContent');
     const views = {
       'dashboard': Dashboard, 'requests': Requests, 'tasks': Tasks,
-      'kanban': Kanban, 'estimates': Estimates, 'settings': SettingsView
+      'kanban': Kanban, 'estimates': Estimates, 'wbs': Wbs, 'gantt': Gantt,
+      'settings': SettingsView
     };
     const View = views[this.currentRoute] || Dashboard;
     // Reset filters when switching views

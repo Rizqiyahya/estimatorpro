@@ -171,6 +171,7 @@ const DB = {
   async deleteTask(id) {
     if (this._mode === 'local') return Storage.deleteTask(id);
     await this._supabase.from('estimates').delete().eq('task_id', id);
+    await this._supabase.from('wbs').delete().eq('task_id', id);
     await this._supabase.from('tasks').delete().eq('id', id);
   },
 
@@ -229,6 +230,52 @@ const DB = {
     const { data } = await this._supabase.from('estimates').select('*').eq('task_id', tid);
     return (data || []).map(e => ({
       ...e, taskId: e.task_id, unitPrice: e.unit_price, totalPrice: e.total_price
+    }));
+  },
+
+  /* ---- WBS (Work Breakdown Structure) ---- */
+  async getWbs() {
+    if (this._mode === 'local') return Storage.getWbs();
+    const { data } = await this._supabase.from('wbs').select('*').order('seq', { ascending: true });
+    return (data || []).map(w => ({
+      ...w, taskId: w.task_id, parentId: w.parent_id, startDate: w.start_date, durationDays: w.duration_days
+    }));
+  },
+
+  async addWbsItem(w) {
+    if (this._mode === 'local') return Storage.addWbsItem(w);
+    const row = {
+      id: w.id || undefined,
+      task_id: w.taskId, parent_id: w.parentId || null, level: w.level || 1,
+      name: w.name || '', start_date: w.startDate || null, duration_days: w.durationDays || null,
+      seq: w.seq || 0, created_by: await this._getUserId()
+    };
+    const { data } = await this._supabase.from('wbs').insert(row).select().single();
+    return { ...data, taskId: data.task_id, parentId: data.parent_id, startDate: data.start_date, durationDays: data.duration_days };
+  },
+
+  async updateWbsItem(id, u) {
+    if (this._mode === 'local') return Storage.updateWbsItem(id, u);
+    const row = {};
+    const map = { taskId: 'task_id', parentId: 'parent_id', startDate: 'start_date', durationDays: 'duration_days' };
+    for (const [k, v] of Object.entries(u)) {
+      if (map[k]) row[map[k]] = v;
+      else if (['name', 'level', 'seq'].includes(k)) row[k] = v;
+    }
+    await this._supabase.from('wbs').update(row).eq('id', id);
+    return u;
+  },
+
+  async deleteWbsItem(id) {
+    if (this._mode === 'local') return Storage.deleteWbsItem(id);
+    await this._supabase.from('wbs').delete().eq('id', id);
+  },
+
+  async getWbsByTask(tid) {
+    if (this._mode === 'local') return Storage.getWbsByTask(tid);
+    const { data } = await this._supabase.from('wbs').select('*').eq('task_id', tid).order('seq', { ascending: true });
+    return (data || []).map(w => ({
+      ...w, taskId: w.task_id, parentId: w.parent_id, startDate: w.start_date, durationDays: w.duration_days
     }));
   },
 
