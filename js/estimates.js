@@ -54,15 +54,19 @@ const Estimates = {
           <p class="page-subtitle">${task ? Utils.escapeHtml(task.subjectTask) : 'Build & review cost estimates'}</p>
         </div>
         <div class="page-actions">
-          <select class="form-select" style="max-width:320px" onchange="Estimates.setTask(this.value)">
-            <option value="">— Select Task to Edit —</option>
-            ${Object.values(requestMap).map(req => {
-              const reqTasks = tasks.filter(t => t.requestId === req.id);
-              return `<optgroup label="${Utils.escapeHtml(req.subject || 'Untitled')} — ${req.division}">
-                ${reqTasks.map(t => `<option value="${t.id}" ${t.id === this.selectedTaskId ? 'selected' : ''}>${Utils.escapeHtml(t.subjectTask)} [${t.pipelineStatus}]</option>`).join('')}
-              </optgroup>`;
-            }).join('')}
-          </select>
+          ${Utils.combobox({
+            id: 'estimatesTaskCb',
+            options: Object.values(requestMap).flatMap(req =>
+              tasks.filter(t => t.requestId === req.id).map(t => ({
+                value: t.id,
+                label: `${t.subjectTask} [${t.pipelineStatus}]`,
+                group: `${req.subject || 'Untitled'} — ${req.division}`
+              }))
+            ),
+            selected: this.selectedTaskId,
+            placeholder: 'Ketik untuk mencari task…',
+            onChange: 'Estimates.setTask(v)'
+          })}
           ${this.selectedTaskId ? `
             <button class="btn btn-primary" onclick="Estimates.openModal()">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -189,6 +193,7 @@ const Estimates = {
   setTask(taskId) {
     this.selectedTaskId = taskId;
     document.getElementById('mainContent').innerHTML = this.render();
+    Utils.initComboboxes(document.getElementById('mainContent'));
   },
 
   openForTask(taskId) {
@@ -196,7 +201,7 @@ const Estimates = {
     App.navigate('#estimates');
   },
 
-  refresh() { document.getElementById('mainContent').innerHTML = this.render(); },
+  refresh() { document.getElementById('mainContent').innerHTML = this.render(); Utils.initComboboxes(document.getElementById('mainContent')); },
 
   openModal(editId = null) {
     const est = editId ? Storage.getEstimates().find(e => e.id === editId) : null;

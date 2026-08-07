@@ -171,9 +171,11 @@ const Kanban = {
         <div class="form-group"><label class="form-label">Subject Task *</label><input type="text" class="form-input" name="subjectTask" required placeholder="Task description..." autofocus></div>
         <div class="form-row">
           <div class="form-group"><label class="form-label">Linked Request *</label>
-            <select class="form-select" name="requestId" required><option value="">— Select —</option>
-              ${requests.map(r => `<option value="${r.id}">${Utils.escapeHtml(r.subject||'Untitled')} [${r.division}]</option>`).join('')}
-            </select>
+            ${Utils.combobox({
+              name: 'requestId',
+              options: requests.map(r => ({ value: r.id, label: `${r.subject||'Untitled'} [${r.division}]`, group: r.division })),
+              placeholder: 'Ketik untuk mencari request…'
+            })}
           </div>
           <div class="form-group"><label class="form-label">Pipeline</label>
             <select class="form-select" name="pipelineStatus">

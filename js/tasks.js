@@ -77,12 +77,23 @@ const Tasks = {
       <div class="filter-pills">
         ${divPills.map(d => `<button class="filter-pill ${this.filterDiv===d.id?'active':''}" style="${d.style}" onclick="Tasks.filterDiv='${d.id}';Tasks.refresh()">${d.label}</button>`).join('')}
         <span style="flex:1"></span>
-        <select class="form-select" style="width:auto;max-width:260px;padding:6px 10px;font-size:0.78rem" onchange="Tasks.filterRequest=this.value;sessionStorage.setItem('tasksFilterRequest',this.value);Tasks.refresh()">
-          <option value="all">📋 All Requests</option>
-          ${requests.slice().sort((a,b)=>(a.subject||'').localeCompare(b.subject||'','id')).map(r =>
-            `<option value="${r.id}" ${this.filterRequest===r.id?'selected':''}>${Utils.escapeHtml(Utils.truncate(r.subject||'Untitled',40))} [${r.division}]</option>`
-          ).join('')}
-        </select>
+        <div style="position:relative;min-width:200px;max-width:280px">
+          ${Utils.combobox({
+            id: 'taskFilterReqCb',
+            name: 'tasksFilterRequest',
+            options: [
+              { value: 'all', label: '📋 All Requests' },
+              ...requests.slice().sort((a,b)=>(a.subject||'').localeCompare(b.subject||'','id')).map(r => ({
+                value: r.id,
+                label: `${Utils.truncate(r.subject||'Untitled',40)} [${r.division}]`,
+                group: r.division
+              }))
+            ],
+            selected: this.filterRequest || 'all',
+            placeholder: 'Cari request…',
+            onChange: "Tasks.filterRequest=v;sessionStorage.setItem('tasksFilterRequest',v);Tasks.refresh()"
+          })}
+        </div>
         <select class="form-select" style="width:auto;padding:6px 10px;font-size:0.78rem" onchange="Tasks.filterCat=this.value;Tasks.refresh()">
           ${Utils.catOptions(this.filterCat === 'all' ? '' : this.filterCat).replace('— Semua Kategori —','📂 All Category')}
         </select>
@@ -228,7 +239,7 @@ const Tasks = {
     });
   },
 
-  refresh() { document.getElementById('mainContent').innerHTML = this.render(); },
+  refresh() { document.getElementById('mainContent').innerHTML = this.render(); Utils.initComboboxes(document.getElementById('mainContent')); },
 
   openModal(editId = null) {
     const task = editId ? Storage.getTasks().find(t => t.id === editId) : null;
@@ -277,10 +288,13 @@ const Tasks = {
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Linked Request *</label>
-            <select class="form-select" name="requestId" required onchange="Tasks.onReqChange(this.value)">
-              <option value="">— Select Request —</option>
-              ${requests.map(r => `<option value="${r.id}" ${(task?.requestId||'')===r.id?'selected':''}>${Utils.escapeHtml(r.subject||'Untitled')} [${r.division}]</option>`).join('')}
-            </select>
+            ${Utils.combobox({
+              name: 'requestId',
+              options: requests.map(r => ({ value: r.id, label: `${r.subject||'Untitled'} [${r.division}]`, group: r.division })),
+              selected: task?.requestId || '',
+              placeholder: 'Ketik untuk mencari request…',
+              onChange: 'Tasks.onReqChange(v)'
+            })}
           </div>
           <div class="form-group">
             <label class="form-label">Subject Request</label>

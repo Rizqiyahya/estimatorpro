@@ -163,6 +163,7 @@ const App = {
     const View = views[this.currentRoute] || Dashboard;
     // Reset filters when switching views
     main.innerHTML = View.render();
+    Utils.initComboboxes(main);
   },
 
   openModal(html, size = '') {
@@ -170,6 +171,7 @@ const App = {
     const box = document.getElementById('modalBox');
     box.className = 'modal-box' + (size ? ' ' + size : '');
     box.innerHTML = html;
+    Utils.initComboboxes(box);
     overlay.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
   },

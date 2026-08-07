@@ -286,5 +286,126 @@ const Utils = {
   /* Render datalist for location autocomplete */
   locationDatalist(id) {
     return `<datalist id="${id}">${this.getLocations().map(c => `<option value="${Utils.escapeHtml(c)}">`).join('')}</datalist>`;
+  },
+
+  /* ---- Searchable Combobox ----
+     Replaces a plain <select> with a type-to-filter input + dropdown.
+     cfg: {
+       id,            // unique id (optional, auto-generated)
+       name,          // hidden input name (for forms: f.requestId.value works)
+       options,       // [{ value, label, group? }]
+       selected,      // current value
+       placeholder,   // input placeholder
+       onChange       // JS expression; the chosen value is passed as `v`
+     } */
+  combobox(cfg) {
+    const opts = cfg.options || [];
+    const sel = cfg.selected || '';
+    const selOpt = opts.find(o => String(o.value) === String(sel));
+    const uid = 'cb_' + (cfg.id || this.genId().replace(/[^a-z0-9]/gi, '').slice(0, 10));
+    const data = JSON.stringify(opts.map(o => ({ value: String(o.value), label: o.label, group: o.group || '' })))
+      .replace(/</g, '\\u003c');
+    return `
+    <div class="combobox" id="${uid}" data-onchange="${this.escapeAttr(cfg.onChange || '')}">
+      <input type="hidden" name="${cfg.name || ''}" value="${this.escapeAttr(sel)}" class="combobox-value">
+      <div class="combobox-field" tabindex="0">
+        <input type="text" class="form-input combobox-search" placeholder="${this.escapeAttr(cfg.placeholder || 'Ketik untuk mencari…')}" autocomplete="off" value="${this.escapeAttr(selOpt ? selOpt.label : '')}">
+        <span class="combobox-caret">▾</span>
+      </div>
+      <div class="combobox-panel" style="display:none"></div>
+      <script type="application/json" class="combobox-data">${data}</script>
+    </div>`;
+  },
+
+  escapeAttr(str) {
+    return String(str == null ? '' : str)
+      .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  },
+
+  /* Wire up every .combobox widget inside `root` (document by default).
+     Call after innerHTML is injected (view render / modal open). */
+  initComboboxes(root) {
+    const scope = root || document;
+    if (!document.__cbDocInit) {
+      document.__cbDocInit = true;
+      document.addEventListener('click', (ev) => {
+        document.querySelectorAll('.combobox.open').forEach(box => {
+          if (!box.contains(ev.target)) {
+            box.classList.remove('open');
+            const p = box.querySelector('.combobox-panel');
+            if (p) p.style.display = 'none';
+          }
+        });
+      });
+    }
+    scope.querySelectorAll('.combobox').forEach(box => {
+      if (box.__cbInit) return;
+      box.__cbInit = true;
+      const search = box.querySelector('.combobox-search');
+      const hidden = box.querySelector('.combobox-value');
+      const panel = box.querySelector('.combobox-panel');
+      const dataEl = box.querySelector('.combobox-data');
+      let options = [];
+      try { options = JSON.parse(dataEl.textContent || '[]'); } catch (e) { options = []; }
+      const onChangeExpr = box.getAttribute('data-onchange') || '';
+      const fireChange = (id) => {
+        if (!onChangeExpr) return;
+        try { (new Function('v', onChangeExpr))(id); } catch (e) { console.error('combobox onChange:', e); }
+      };
+      const renderItems = (q) => {
+        const query = String(q || '').toLowerCase().trim();
+        const filtered = options.filter(o =>
+          !query || String(o.label).toLowerCase().includes(query) || String(o.value).toLowerCase().includes(query));
+        let html = '';
+        let lastGroup = null;
+        filtered.forEach(o => {
+          if (o.group && o.group !== lastGroup) {
+            html += `<div class="combobox-group">${Utils.escapeHtml(o.group)}</div>`;
+            lastGroup = o.group;
+          }
+          html += `<div class="combobox-item" data-value="${Utils.escapeAttr(o.value)}" data-label="${Utils.escapeAttr(o.label)}">${Utils.escapeHtml(o.label)}</div>`;
+        });
+        panel.innerHTML = html || '<div class="combobox-empty">Tidak ditemukan — coba kata kunci lain</div>';
+      };
+      const open = () => { renderItems(''); box.classList.add('open'); panel.style.display = 'block'; };
+      const close = () => { box.classList.remove('open'); panel.style.display = 'none'; };
+      const apply = (item) => {
+        hidden.value = item.dataset.value;
+        search.value = item.dataset.label;
+        close();
+        fireChange(item.dataset.value);
+      };
+      search.addEventListener('focus', open);
+      search.addEventListener('input', () => renderItems(search.value));
+      search.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Escape') { close(); search.blur(); return; }
+        const isOpen = box.classList.contains('open');
+        if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
+          ev.preventDefault();
+          if (!isOpen) { open(); return; }
+          const items = [...panel.querySelectorAll('.combobox-item')];
+          if (!items.length) return;
+          const idx = items.findIndex(i => i.classList.contains('hl'));
+          let next = ev.key === 'ArrowDown' ? idx + 1 : (idx < 0 ? items.length - 1 : idx - 1);
+          if (next >= items.length) next = 0;
+          items.forEach((i, k) => i.classList.toggle('hl', k === next));
+          items[next].scrollIntoView({ block: 'nearest' });
+        } else if (ev.key === 'Enter') {
+          if (isOpen) {
+            ev.preventDefault();
+            const items = [...panel.querySelectorAll('.combobox-item')];
+            const idx = items.findIndex(i => i.classList.contains('hl'));
+            if (idx >= 0) apply(items[idx]);
+            else if (items.length === 1) apply(items[0]);
+            else close();
+          }
+        }
+      });
+      panel.addEventListener('mousedown', (ev) => {
+        const item = ev.target.closest('.combobox-item');
+        if (item) { ev.preventDefault(); apply(item); }
+      });
+    });
   }
 };

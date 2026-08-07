@@ -23,9 +23,12 @@ const Wbs = {
       .sort((a, b) => (a.subjectTask || '').localeCompare(b.subjectTask || ''))
       .map(t => {
         const r = requests.find(rr => rr.id === t.requestId);
-        return `<option value="${t.id}" ${t.id === this.selectedTaskId ? 'selected' : ''}>${Utils.escapeHtml(t.subjectTask || 'Untitled')} [${r?.division || '—'}]${t.category ? ' · ' + Utils.toolLabel(t.category) || t.category : ''}</option>`;
-      })
-      .join('');
+        return {
+          value: t.id,
+          label: `${t.subjectTask || 'Untitled'} [${r?.division || '—'}]${t.category ? ' · ' + (Utils.toolLabel(t.category) || t.category) : ''}`,
+          group: r?.subject ? `${r.subject} — ${r.division}` : (r?.division || 'Tanpa Request')
+        };
+      });
 
     // WBS tree for the selected task
     let treeHtml = '<div class="empty-state" style="padding:24px"><div class="empty-state-icon">🧩</div><div class="empty-state-title">Select a task</div><div class="empty-state-desc">Pick a task above to build its Work Breakdown Structure.</div></div>';
@@ -55,17 +58,19 @@ const Wbs = {
 
       <div class="card" style="padding:14px;margin-bottom:16px">
         <label class="form-label">Select Task</label>
-        <select class="form-select" onchange="Wbs.selectedTaskId=this.value;Wbs.render()">
-          <option value="">— Select —</option>
-          ${taskOptions}
-        </select>
+        ${Utils.combobox({
+          options: taskOptions,
+          selected: this.selectedTaskId || '',
+          placeholder: 'Ketik untuk mencari task…',
+          onChange: 'Wbs.selectedTaskId=v;Wbs.refresh()'
+        })}
       </div>
 
       <div id="wbsTree">${treeHtml}</div>
     `;
   },
 
-  refresh() { document.getElementById('mainContent').innerHTML = this.render(); },
+  refresh() { document.getElementById('mainContent').innerHTML = this.render(); Utils.initComboboxes(document.getElementById('mainContent')); },
 
   /* Recursive tree rendering */
   _renderTree(wbs, task) {

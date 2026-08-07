@@ -22,9 +22,12 @@ const Gantt = {
       .sort((a, b) => (a.subjectTask || '').localeCompare(b.subjectTask || ''))
       .map(t => {
         const r = requests.find(rr => rr.id === t.requestId);
-        return `<option value="${t.id}" ${t.id === this.selectedTaskId ? 'selected' : ''}>${Utils.escapeHtml(t.subjectTask || 'Untitled')} [${r?.division || '—'}]</option>`;
-      })
-      .join('');
+        return {
+          value: t.id,
+          label: `${t.subjectTask || 'Untitled'} [${r?.division || '—'}]`,
+          group: r?.subject ? `${r.subject} — ${r.division}` : (r?.division || 'Tanpa Request')
+        };
+      });
 
     let bodyHtml = '<div class="empty-state" style="padding:24px"><div class="empty-state-icon">📅</div><div class="empty-state-title">Select a task</div><div class="empty-state-desc">Pick a task above to build its Gantt chart from the WBS activities.</div></div>';
 
@@ -59,10 +62,12 @@ const Gantt = {
 
       <div class="card" style="padding:14px;margin-bottom:16px">
         <label class="form-label">Select Task</label>
-        <select class="form-select" onchange="Gantt.selectedTaskId=this.value;Gantt.render()">
-          <option value="">— Select —</option>
-          ${taskOptions}
-        </select>
+        ${Utils.combobox({
+          options: taskOptions,
+          selected: this.selectedTaskId || '',
+          placeholder: 'Ketik untuk mencari task…',
+          onChange: 'Gantt.selectedTaskId=v;Gantt.refresh()'
+        })}
       </div>
 
       <div id="ganttBody">${bodyHtml}</div>
@@ -70,7 +75,7 @@ const Gantt = {
     `;
   },
 
-  refresh() { document.getElementById('mainContent').innerHTML = this.render(); },
+  refresh() { document.getElementById('mainContent').innerHTML = this.render(); Utils.initComboboxes(document.getElementById('mainContent')); },
 
   _ganttColor(idx) {
     const pal = ['#4f9cf9', '#6fcf97', '#bb8cf2', '#f2c94c', '#f2994a', '#eb5757'];
