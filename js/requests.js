@@ -6,6 +6,14 @@ const Requests = {
   filterDiv: 'all',
   filterStatus: 'all',
   searchText: '',
+  sortKey: 'date',
+  sortDir: 'desc',
+
+  sort(key) {
+    if (this.sortKey === key) this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+    else { this.sortKey = key; this.sortDir = 'asc'; }
+    this.refresh();
+  },
 
   render() {
     let reqs = Storage.getRequests();
@@ -22,6 +30,8 @@ const Requests = {
         (r.emailBy||'').toLowerCase().includes(q)
       );
     }
+    // Apply column sort (default: newest first)
+    reqs = Utils.sortBy(reqs, this.sortKey, this.sortDir);
 
     const openCount = Storage.getRequests().filter(r => r.status === 'open').length;
 
@@ -74,13 +84,13 @@ const Requests = {
           <table>
             <thead>
               <tr>
-                <th>No</th><th>Date</th><th>Subject</th><th>Email</th><th>Sales</th>
-                <th>Customer</th><th>End User</th><th>Division</th>
-                <th>Status</th><th></th>
+                <th>No</th>${Utils.sortableTh('Date','date',this.sortKey,this.sortDir,'Requests')}${Utils.sortableTh('Subject','subject',this.sortKey,this.sortDir,'Requests')}${Utils.sortableTh('Email','emailBy',this.sortKey,this.sortDir,'Requests')}${Utils.sortableTh('Sales','requestBy',this.sortKey,this.sortDir,'Requests')}
+                ${Utils.sortableTh('Customer','customer',this.sortKey,this.sortDir,'Requests')}${Utils.sortableTh('End User','endUser',this.sortKey,this.sortDir,'Requests')}${Utils.sortableTh('Division','division',this.sortKey,this.sortDir,'Requests')}
+                ${Utils.sortableTh('Status','status',this.sortKey,this.sortDir,'Requests')}<th></th>
               </tr>
             </thead>
             <tbody id="reqTableBody">
-              ${reqs.sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)).map(r => this.renderRow(r)).join('')}
+              ${reqs.map(r => this.renderRow(r)).join('')}
             </tbody>
           </table>
         </div>

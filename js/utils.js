@@ -81,6 +81,37 @@ const Utils = {
     return `<span class="badge ${m[s] || 'badge-neutral'}">${l[s] || s}</span>`;
   },
 
+  /* Sort array of objects by a field or getter function. Type-aware (date/number/string).
+     dir: 'asc' | 'desc' — returns a NEW sorted array (does not mutate). */
+  sortBy(arr, key, dir = 'asc') {
+    const mul = dir === 'desc' ? -1 : 1;
+    const getter = typeof key === 'function' ? key : (o) => o[key];
+    return arr.slice().sort((a, b) => {
+      const va = getter(a), vb = getter(b);
+      // Date fields
+      if (key === 'date' || key === 'createdAt' || key === 'startDate') {
+        const ta = va ? new Date(va).getTime() : 0;
+        const tb = vb ? new Date(vb).getTime() : 0;
+        return (ta - tb) * mul;
+      }
+      // Numbers (including string numbers)
+      if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * mul;
+      const na = parseFloat(va), nb = parseFloat(vb);
+      if (!isNaN(na) && !isNaN(nb) && key !== 'noId' && String(va).trim() !== '' && String(vb).trim() !== '') {
+        return (na - nb) * mul;
+      }
+      // Strings (case-insensitive)
+      return String(va || '').localeCompare(String(vb || ''), 'id', { sensitivity: 'base' }) * mul;
+    });
+  },
+
+  /* Sortable table header cell with arrow indicator */
+  sortableTh(label, key, sortKey, sortDir, ns) {
+    const active = sortKey === key;
+    const arrow = active ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ' ⇅';
+    return `<th class="sortable ${active ? 'sort-active' : ''}" onclick="${ns}.sort('${key}')" title="Urutkan ${label}">${label}<span class="sort-arrow">${arrow}</span></th>`;
+  },
+
   /* Normalize legacy category keys to new tool-aligned keys */
   normalizeCat(c) {
     const map = { pembuatan_boq:'boq', ajuan_solusi_teknis:'wbs', proposal_teknis:'proptek' };

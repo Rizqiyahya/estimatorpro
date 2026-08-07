@@ -8,6 +8,14 @@ const Tasks = {
   filterCat: 'all',
   filterScope: 'all',
   searchText: '',
+  sortKey: 'date',
+  sortDir: 'desc',
+
+  sort(key) {
+    if (this.sortKey === key) this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+    else { this.sortKey = key; this.sortDir = 'asc'; }
+    this.refresh();
+  },
 
   render() {
     let tasks = Storage.getTasks();
@@ -33,6 +41,12 @@ const Tasks = {
         (t.requestBy||'').toLowerCase().includes(q) ||
         (t.customer||'').toLowerCase().includes(q)
       );
+    }
+    // Apply column sort (default: newest first)
+    if (this.sortKey === 'scope') {
+      tasks = Utils.sortBy(tasks, t => [t.scopePL?'PL':'',t.scopePS?'PS':'',t.scopeMS?'MS':''].filter(Boolean).join(','), this.sortDir);
+    } else {
+      tasks = Utils.sortBy(tasks, this.sortKey, this.sortDir);
     }
 
     const activeCount = Storage.getTasks().filter(t => t.pipelineStatus !== 'done').length;
@@ -92,14 +106,14 @@ const Tasks = {
           <table>
             <thead>
               <tr>
-                <th>No</th><th>Date</th><th>Request</th><th>Subject Task</th>
-                <th>Sales</th><th>Customer</th><th>End User</th>
-                <th>Division</th><th>Category</th><th>Scope</th><th>Location</th>
-                <th>Priority</th><th>Pipeline</th><th>🔗 BoQ</th><th></th>
+                <th>No</th>${Utils.sortableTh('Date','date',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Request','subjectRequest',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Subject Task','subjectTask',this.sortKey,this.sortDir,'Tasks')}
+                ${Utils.sortableTh('Sales','requestBy',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Customer','customer',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('End User','endUser',this.sortKey,this.sortDir,'Tasks')}
+                ${Utils.sortableTh('Division','division',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Category','category',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Scope','scope',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Location','location',this.sortKey,this.sortDir,'Tasks')}
+                ${Utils.sortableTh('Priority','priority',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Pipeline','pipelineStatus',this.sortKey,this.sortDir,'Tasks')}<th>🔗 BoQ</th><th></th>
               </tr>
             </thead>
             <tbody id="taskTableBody">
-              ${tasks.sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)).map((t,i) => this.renderRow(t,i)).join('')}
+              ${tasks.map((t,i) => this.renderRow(t,i)).join('')}
             </tbody>
           </table>
         </div>

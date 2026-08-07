@@ -399,6 +399,13 @@ td.actions{display:flex;gap:4px;justify-content:flex-end}
   .kanban-column{min-width:100%;max-width:100%}
 }
 
+/* ===== Sortable table headers ===== */
+th.sortable { cursor: pointer; user-select: none; white-space: nowrap; transition: color .15s; }
+th.sortable:hover { color: var(--accent); }
+th.sort-active { color: var(--accent); }
+.sort-arrow { opacity: 0.55; font-size: 0.72em; margin-left: 2px; }
+th.sort-active .sort-arrow { opacity: 1; }
+
 /* ============================================================
    DASHBOARD: Donut Chart, Pipeline Legend, Recent
    ============================================================ */
