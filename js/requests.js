@@ -126,19 +126,19 @@ const Requests = {
     const tc = Storage.getTasksByRequest(r.id).length;
     return `
       <tr data-rid="${r.id}" data-div="${r.division}" data-status="${r.status}">
-        <td style="font-family:var(--font-mono);font-size:0.74rem;color:var(--text-muted)">#${r.noId||'—'}</td>
-        <td>${Utils.formatDateShort(r.date)}</td>
-        <td>
+        <td data-label="No" style="font-family:var(--font-mono);font-size:0.74rem;color:var(--text-muted)">#${r.noId||'—'}</td>
+        <td data-label="Date">${Utils.formatDateShort(r.date)}</td>
+        <td data-label="Subject">
           <strong style="cursor:pointer;color:var(--accent)" onclick="Requests.openTasksFor('${r.id}')">${Utils.escapeHtml(r.subject||'—')}</strong>
           ${tc>0?`<div style="font-size:0.7rem;color:var(--text-muted)">${tc} tasks</div>`:''}
         </td>
-        <td>${Utils.escapeHtml(r.emailBy||'—')}</td>
-        <td>${Utils.escapeHtml(r.requestBy||'—')}</td>
-        <td>${Utils.escapeHtml(r.customer||'—')}</td>
-        <td>${Utils.escapeHtml(r.endUser||'—')}</td>
-        <td><span class="badge ${Utils.divClass(r.division)}">${r.division||'—'}</span></td>
-        <td>${Utils.reqStatusBadge(r.status)}</td>
-        <td class="actions">
+        <td data-label="Email">${Utils.escapeHtml(r.emailBy||'—')}</td>
+        <td data-label="Sales">${Utils.escapeHtml(r.requestBy||'—')}</td>
+        <td data-label="Customer">${Utils.escapeHtml(r.customer||'—')}</td>
+        <td data-label="End User">${Utils.escapeHtml(r.endUser||'—')}</td>
+        <td data-label="Division"><span class="badge ${Utils.divClass(r.division)}">${r.division||'—'}</span></td>
+        <td data-label="Status">${Utils.reqStatusBadge(r.status)}</td>
+        <td class="actions" data-label="">
           <button class="btn-icon btn-xs" onclick="Requests.openModal('${r.id}')" title="Edit">✏️</button>
           ${tc === 0 ? `
             <button class="btn-icon btn-xs" style="color:var(--accent);font-weight:700" onclick="sessionStorage.setItem('addTaskForRequest','${r.id}');App.navigate('#tasks')" title="Add Task">➕</button>

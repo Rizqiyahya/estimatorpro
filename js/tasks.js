@@ -173,26 +173,26 @@ const Tasks = {
 
     return `
       <tr data-tid="${t.id}" data-divid="${req?.division||''}" data-pipe="${t.pipelineStatus}">
-        <td style="font-family:var(--font-mono);font-size:0.72rem;color:var(--text-muted)">#${i+1}</td>
-        <td>${Utils.formatDateShort(t.date)}</td>
-        <td>
+        <td data-label="No" style="font-family:var(--font-mono);font-size:0.72rem;color:var(--text-muted)">#${i+1}</td>
+        <td data-label="Date">${Utils.formatDateShort(t.date)}</td>
+        <td data-label="Request">
           <span class="badge ${Utils.divClass(req?.division)}" style="font-size:0.65rem">${req?.division||'—'}</span>
           <div style="font-size:0.74rem;color:var(--text-secondary);margin-top:2px">${Utils.truncate(Utils.escapeHtml(t.subjectRequest||'—'),25)}</div>
         </td>
-        <td><strong style="color:var(--text-primary)">${Utils.escapeHtml(t.subjectTask||'—')}</strong></td>
-        <td>${Utils.escapeHtml(t.requestBy||'—')}</td>
-        <td>${Utils.escapeHtml(t.customer||'—')}</td>
-        <td>${Utils.escapeHtml(t.endUser||'—')}</td>
-        <td><span class="badge ${Utils.divClass(req?.division)}">${req?.division||'—'}</span></td>
-        <td>${Utils.catBadge(t.category)}</td>
-        <td>${scopes.join(' ')||'—'}</td>
-        <td>${Utils.escapeHtml(t.location||'—')}</td>
-        <td>${t.priority==='High'?'<span class="badge badge-red">High</span>':'<span class="badge badge-neutral">Normal</span>'}</td>
-        <td>${Utils.pipeBadge(t.pipelineStatus)}</td>
-        <td>
+        <td data-label="Subject Task"><strong style="color:var(--text-primary)">${Utils.escapeHtml(t.subjectTask||'—')}</strong></td>
+        <td data-label="Sales">${Utils.escapeHtml(t.requestBy||'—')}</td>
+        <td data-label="Customer">${Utils.escapeHtml(t.customer||'—')}</td>
+        <td data-label="End User">${Utils.escapeHtml(t.endUser||'—')}</td>
+        <td data-label="Division"><span class="badge ${Utils.divClass(req?.division)}">${req?.division||'—'}</span></td>
+        <td data-label="Category">${Utils.catBadge(t.category)}</td>
+        <td data-label="Scope">${scopes.join(' ')||'—'}</td>
+        <td data-label="Location">${Utils.escapeHtml(t.location||'—')}</td>
+        <td data-label="Priority">${t.priority==='High'?'<span class="badge badge-red">High</span>':'<span class="badge badge-neutral">Normal</span>'}</td>
+        <td data-label="Pipeline">${Utils.pipeBadge(t.pipelineStatus)}</td>
+        <td data-label="BoQ">
           ${t.boqLink?`<a href="${Utils.escapeHtml(t.boqLink)}" target="_blank" class="link-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>Open</a>`:'<span style="color:var(--text-muted);font-size:0.72rem">—</span>'}
         </td>
-        <td class="actions">
+        <td class="actions" data-label="">
           ${Utils.toolForCategory(t.category) ? `<button class="btn-icon btn-xs" style="color:var(--accent)" onclick="Tasks.openTool('${t.id}')" title="Buka tool: ${Utils.toolLabel(t.category)}">🧰</button>` : ''}
           <button class="btn-icon btn-xs" onclick="Tasks.openModal('${t.id}')" title="Edit">✏️</button>
           <button class="btn-icon btn-xs" style="color:var(--red)" onclick="Tasks.confirmDelete('${t.id}')" title="Delete">🗑️</button>

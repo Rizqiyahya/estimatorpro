@@ -209,7 +209,7 @@ input,select,textarea{font-family:inherit;font-size:inherit}
 .sidebar-overlay.show{display:block}
 
 /* ===== MAIN ===== */
-.main-content{margin-left:var(--sidebar-width);flex:1;min-height:100vh;padding:32px 36px;transition:margin .22s ease;max-width:1500px;width:100%}
+.main-content{margin-left:var(--sidebar-width);flex:1;min-height:100vh;padding:32px 36px;transition:margin .22s ease;max-width:100%;width:100%}
 
 /* ===== SIDEBAR COLLAPSED ===== */
 body.sidebar-min .sidebar{width:var(--sidebar-width-min)}
@@ -510,6 +510,25 @@ th.sort-active .sort-arrow { opacity: 1; }
 @media(max-width:1024px){
   .dash-grid-2 { grid-template-columns: 1fr; }
   .donut-wrap { justify-content: center; }
+}
+
+/* ===== RESPONSIVE: Card mode for tables (mobile/tablet) ===== */
+@media(max-width:1024px){
+  .main-content{padding:20px 14px}
+  /* Convert every data table row into a stacked card — vertical scroll only */
+  .table-container{max-height:none;overflow:visible;border:none;background:transparent}
+  .table-container thead{display:none}
+  .table-container tbody{display:block}
+  .table-container tbody tr{display:block;border:1px solid var(--border);border-radius:12px;margin-bottom:12px;background:var(--bg-card);padding:6px 0}
+  .table-container tbody tr td{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:6px 14px;border:none;border-bottom:1px dashed var(--border);text-align:right;font-size:0.82rem}
+  .table-container tbody tr td:last-child{border-bottom:none}
+  .table-container tbody tr td::before{content:attr(data-label);font-size:0.66rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.4px;text-align:left;flex-shrink:0;min-width:86px}
+  .table-container tbody tr td.actions{justify-content:flex-end;gap:6px}
+  .table-container tbody tr td.actions::before{display:none}
+}
+@media(max-width:640px){
+  .table-container tbody tr td{flex-direction:column;align-items:flex-start;text-align:left}
+  .table-container tbody tr td::before{min-width:0}
 }
 
 /* ===== WBS Builder ===== */
