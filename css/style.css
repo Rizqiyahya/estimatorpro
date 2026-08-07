@@ -33,7 +33,7 @@
   font-size: 1.6rem; font-weight: 800; color: var(--text-primary);
   letter-spacing: -0.5px;
 }
-.login-logo-img { height: 64px; max-width: 100%; }
+.login-logo-img { height: 64px; max-width: 100%; background:#fff; border-radius:14px; padding:8px; box-sizing:border-box; }
 .login-subtitle {
   text-align: center; font-size: 0.8rem; color: var(--text-muted);
   margin-top: 4px;
@@ -180,7 +180,7 @@ input,select,textarea{font-family:inherit;font-size:inherit}
 .sidebar-toggle{margin-left:auto;background:none;border:1px solid var(--border);color:var(--text-muted);border-radius:6px;padding:4px 9px;font-size:0.85rem;transition:all var(--transition);flex-shrink:0}
 .sidebar-toggle:hover{background:var(--bg-hover);color:var(--accent)}
 .brand-icon{font-size:1.4rem}
-.brand-logo{width:38px;height:38px;object-fit:contain;flex-shrink:0}
+.brand-logo{width:38px;height:38px;object-fit:contain;flex-shrink:0;background:#fff;border-radius:8px;padding:4px;box-sizing:border-box;box-shadow:0 0 0 1px rgba(0,0,0,0.06)}
 .brand-text-wrap{overflow:hidden;white-space:nowrap;transition:opacity .15s}
 .brand-text{font-weight:700;font-size:0.95rem;letter-spacing:-0.3px;color:var(--text-primary)}
 .brand-sub{font-size:0.62rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-top:1px}
@@ -222,9 +222,10 @@ body.sidebar-min .nav-item{justify-content:center;padding:10px 8px}
 body.sidebar-min .nav-item span:not(.nav-badge){display:none}
 body.sidebar-min .nav-item{position:relative}
 body.sidebar-min .nav-badge{position:absolute;top:2px;right:4px;min-width:16px;font-size:0.58rem;padding:0 4px;line-height:16px}
-body.sidebar-min .sidebar-user{justify-content:center}
+body.sidebar-min .sidebar-user{flex-direction:column;gap:6px;justify-content:center;padding:8px 0;margin:0 6px 8px}
 body.sidebar-min .sidebar-user-info{display:none}
-body.sidebar-min .sidebar-user-logout{position:absolute;top:30px;right:6px}
+body.sidebar-min .sidebar-user-avatar{width:32px;height:32px;font-size:0.85rem;line-height:32px;border-radius:50%}
+body.sidebar-min .sidebar-user-logout{position:static;width:24px;height:24px;font-size:0.7rem}
 body.sidebar-min .sidebar-nav::-webkit-scrollbar{width:3px}
 @media(max-width:768px){body.sidebar-min .sidebar{width:var(--sidebar-width);transform:translateX(-100%)}body.sidebar-min .sidebar.open{transform:translateX(0)}body.sidebar-min .main-content{margin-left:0}}
 
