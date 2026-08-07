@@ -43,6 +43,18 @@ const App = {
       App.toggleOverlay(sb.classList.contains('open'));
     });
 
+    // Sidebar minimize / expand (desktop)
+    const sbToggle = document.getElementById('sidebarToggle');
+    if (sbToggle) {
+      if (localStorage.getItem('ep2_sidebar_min') === '1') document.body.classList.add('sidebar-min');
+      sbToggle.addEventListener('click', () => {
+        document.body.classList.toggle('sidebar-min');
+        localStorage.setItem('ep2_sidebar_min', document.body.classList.contains('sidebar-min') ? '1' : '0');
+        sbToggle.textContent = document.body.classList.contains('sidebar-min') ? '»' : '«';
+      });
+      sbToggle.textContent = document.body.classList.contains('sidebar-min') ? '»' : '«';
+    }
+
     document.querySelectorAll('.nav-item[data-route]').forEach(item => {
       item.addEventListener('click', (e) => {
         e.preventDefault();
@@ -50,6 +62,9 @@ const App = {
         document.getElementById('sidebar').classList.remove('open');
         App.toggleOverlay(false);
       });
+      // Tooltip title when sidebar is minimized
+      const label = item.querySelector('span');
+      if (label && !item.getAttribute('title')) item.setAttribute('title', label.textContent.trim());
     });
 
     document.getElementById('modalOverlay').addEventListener('click', (e) => {
