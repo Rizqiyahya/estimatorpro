@@ -7,6 +7,7 @@ const Tasks = {
   filterPipe: 'all',
   filterCat: 'all',
   filterScope: 'all',
+  filterRequest: sessionStorage.getItem('tasksFilterRequest') || 'all',
   searchText: '',
   sortKey: 'date',
   sortDir: 'desc',
@@ -33,6 +34,8 @@ const Tasks = {
       if (this.filterScope === 'MS') return t.scopeMS;
       return true;
     });
+    if (this.filterRequest !== 'all') tasks = tasks.filter(t => t.requestId === this.filterRequest);
+    const activeRequest = requests.find(r => r.id === this.filterRequest);
     if (this.searchText) {
       const q = this.searchText.toLowerCase();
       tasks = tasks.filter(t =>
@@ -74,6 +77,12 @@ const Tasks = {
       <div class="filter-pills">
         ${divPills.map(d => `<button class="filter-pill ${this.filterDiv===d.id?'active':''}" style="${d.style}" onclick="Tasks.filterDiv='${d.id}';Tasks.refresh()">${d.label}</button>`).join('')}
         <span style="flex:1"></span>
+        <select class="form-select" style="width:auto;max-width:260px;padding:6px 10px;font-size:0.78rem" onchange="Tasks.filterRequest=this.value;sessionStorage.setItem('tasksFilterRequest',this.value);Tasks.refresh()">
+          <option value="all">📋 All Requests</option>
+          ${requests.slice().sort((a,b)=>(a.subject||'').localeCompare(b.subject||'','id')).map(r =>
+            `<option value="${r.id}" ${this.filterRequest===r.id?'selected':''}>${Utils.escapeHtml(Utils.truncate(r.subject||'Untitled',40))} [${r.division}]</option>`
+          ).join('')}
+        </select>
         <select class="form-select" style="width:auto;padding:6px 10px;font-size:0.78rem" onchange="Tasks.filterCat=this.value;Tasks.refresh()">
           ${Utils.catOptions(this.filterCat === 'all' ? '' : this.filterCat).replace('— Semua Kategori —','📂 All Category')}
         </select>
@@ -93,6 +102,20 @@ const Tasks = {
       <div class="search-bar">
         <input type="text" class="search-input" placeholder="🔍 Cari task, request, sales..." id="taskSearchInput" value="${Utils.escapeHtml(this.searchText)}">
       </div>
+
+      ${activeRequest ? `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:rgba(79,156,249,0.08);border:1px solid rgba(79,156,249,0.3);border-radius:10px;padding:10px 14px;margin-bottom:12px;flex-wrap:wrap">
+          <div>
+            <div style="font-size:0.72rem;color:var(--accent);font-weight:700;letter-spacing:0.4px">FILTERED BY REQUEST</div>
+            <div style="font-weight:600;font-size:0.95rem">${Utils.escapeHtml(activeRequest.subject||'—')}</div>
+            <div style="font-size:0.72rem;color:var(--text-muted)">${activeRequest.division||'—'} · ${Utils.escapeHtml(activeRequest.customer||'')} · ${Utils.escapeHtml(activeRequest.endUser||'')} · ${Utils.formatDateShort(activeRequest.date)}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="gantt-stat">${tasks.length} task</span>
+            <button class="btn btn-xs btn-secondary" onclick="Tasks.filterRequest='all';sessionStorage.removeItem('tasksFilterRequest');Tasks.refresh()">✕ Clear Filter</button>
+          </div>
+        </div>
+      ` : ''}
 
       ${tasks.length === 0 ? `
         <div class="empty-state">

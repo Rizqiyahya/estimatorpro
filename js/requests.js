@@ -15,6 +15,13 @@ const Requests = {
     this.refresh();
   },
 
+  /* Click on request subject → open Tasks view filtered to this request */
+  openTasksFor(reqId) {
+    sessionStorage.setItem('tasksFilterRequest', reqId);
+    Tasks.filterRequest = reqId;
+    App.navigate('#tasks');
+  },
+
   render() {
     let reqs = Storage.getRequests();
 
@@ -122,7 +129,7 @@ const Requests = {
         <td style="font-family:var(--font-mono);font-size:0.74rem;color:var(--text-muted)">#${r.noId||'—'}</td>
         <td>${Utils.formatDateShort(r.date)}</td>
         <td>
-          <strong style="cursor:pointer;color:var(--accent)" onclick="App.navigate('#tasks')">${Utils.escapeHtml(r.subject||'—')}</strong>
+          <strong style="cursor:pointer;color:var(--accent)" onclick="Requests.openTasksFor('${r.id}')">${Utils.escapeHtml(r.subject||'—')}</strong>
           ${tc>0?`<div style="font-size:0.7rem;color:var(--text-muted)">${tc} tasks</div>`:''}
         </td>
         <td>${Utils.escapeHtml(r.emailBy||'—')}</td>

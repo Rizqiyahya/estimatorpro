@@ -257,7 +257,9 @@ input,select,textarea{font-family:inherit;font-size:inherit}
 .kpi-delta.down{color:var(--red)}
 
 /* ===== TABLES ===== */
-.table-container{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--bg-card)}
+.table-container{overflow:auto;max-height:72vh;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--bg-card)}
+.table-container table{min-width:100%;border-collapse:separate;border-spacing:0}
+.table-container thead th{position:sticky;top:0;z-index:5;background:var(--bg-card);box-shadow:0 1px 0 var(--border)}
 table{width:100%;border-collapse:collapse}
 th,td{padding:11px 15px;text-align:left;font-size:0.84rem;border-bottom:1px solid var(--border-light);color:var(--text-primary)}
 th{font-size:0.73rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;background:var(--bg-secondary);white-space:nowrap;position:sticky;top:0;z-index:1}
