@@ -43,17 +43,7 @@ const App = {
       App.toggleOverlay(sb.classList.contains('open'));
     });
 
-    // Sidebar minimize / expand (desktop)
-    const sbToggle = document.getElementById('sidebarToggle');
-    if (sbToggle) {
-      if (localStorage.getItem('ep2_sidebar_min') === '1') document.body.classList.add('sidebar-min');
-      sbToggle.addEventListener('click', () => {
-        document.body.classList.toggle('sidebar-min');
-        localStorage.setItem('ep2_sidebar_min', document.body.classList.contains('sidebar-min') ? '1' : '0');
-        sbToggle.textContent = document.body.classList.contains('sidebar-min') ? '▾' : '▴';
-      });
-      sbToggle.textContent = document.body.classList.contains('sidebar-min') ? '▾' : '▴';
-    }
+    // Sidebar minimize removed — top nav does not need collapse
 
     document.querySelectorAll('.nav-item[data-route]').forEach(item => {
       item.addEventListener('click', (e) => {
