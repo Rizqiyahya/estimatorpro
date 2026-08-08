@@ -50,9 +50,9 @@ const App = {
       sbToggle.addEventListener('click', () => {
         document.body.classList.toggle('sidebar-min');
         localStorage.setItem('ep2_sidebar_min', document.body.classList.contains('sidebar-min') ? '1' : '0');
-        sbToggle.textContent = document.body.classList.contains('sidebar-min') ? '»' : '«';
+        sbToggle.textContent = document.body.classList.contains('sidebar-min') ? '▾' : '▴';
       });
-      sbToggle.textContent = document.body.classList.contains('sidebar-min') ? '»' : '«';
+      sbToggle.textContent = document.body.classList.contains('sidebar-min') ? '▾' : '▴';
     }
 
     document.querySelectorAll('.nav-item[data-route]').forEach(item => {
