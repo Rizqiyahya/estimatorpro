@@ -89,7 +89,7 @@ const Utils = {
     return arr.slice().sort((a, b) => {
       const va = getter(a), vb = getter(b);
       // Date fields
-      if (key === 'date' || key === 'createdAt' || key === 'startDate') {
+      if (key === 'date' || key === 'createdAt' || key === 'startDate' || key === 'targetDate') {
         const ta = va ? new Date(va).getTime() : 0;
         const tb = vb ? new Date(vb).getTime() : 0;
         return (ta - tb) * mul;

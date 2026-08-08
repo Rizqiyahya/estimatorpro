@@ -115,6 +115,7 @@ const Kanban = {
                           <span class="badge ${Utils.divClass(req?.division)}" style="font-size:0.6rem">${req?.division||'—'}</span>
                           ${t.priority==='High'?`<span style="font-size:0.6rem;color:var(--red);font-weight:600">⚠</span>`:''}
                           ${t.category?Utils.catBadge(t.category):''}
+                          ${t.targetDate?this.targetBadge(t):''}
                           ${cycleTime?`<span style="font-size:0.62rem;color:var(--text-muted)">⏱ ${Utils.formatDuration(cycleTime)}</span>`:''}
                         </div>
                       </div>
@@ -132,6 +133,18 @@ const Kanban = {
   },
 
   refresh() { document.getElementById('mainContent').innerHTML = this.render(); },
+
+  targetBadge(t) {
+    if (!t.targetDate) return '';
+    const target = new Date(t.targetDate + 'T00:00:00');
+    const today = new Date(); today.setHours(0,0,0,0);
+    const diff = Math.round((target - today) / 86400000);
+    const d = Utils.formatDateShort(t.targetDate);
+    if (t.pipelineStatus === 'done') return `<span class="badge badge-green" style="font-size:0.6rem">✓ ${d}</span>`;
+    if (diff < 0) return `<span class="badge badge-red" style="font-size:0.6rem" title="Terlambat ${-diff} hari">⚠ ${d}</span>`;
+    if (diff <= 3) return `<span class="badge badge-orange" style="font-size:0.6rem" title="Tersisa ${diff} hari">🎯 ${d}</span>`;
+    return `<span class="badge badge-neutral" style="font-size:0.6rem">${d}</span>`;
+  },
 
   handleDragStart(e) {
     e.target.classList.add('dragging');
@@ -185,6 +198,7 @@ const Kanban = {
         </div>
         <div class="form-row">
           <div class="form-group"><label class="form-label">Priority</label><select class="form-select" name="priority"><option value="Normal" selected>Normal</option><option value="High">High</option></select></div>
+          <div class="form-group"><label class="form-label">🎯 Target Done</label><input type="date" class="form-input" name="targetDate"></div>
           <div class="form-group"><label class="form-label">Location</label><input type="text" class="form-input" name="location" placeholder="e.g. Jakarta" list="locList">${Utils.locationDatalist('locList')}</div>
         </div>
         <div class="modal-footer">
@@ -206,7 +220,7 @@ const Kanban = {
       priority:f.priority.value, location:f.location.value.trim(),
       subjectRequest:req.subject, requestBy:req.requestBy, customer:req.customer,
       endUser:req.endUser, scopePL:req.scopePL, scopePS:req.scopePS, scopeMS:req.scopeMS,
-      date:Utils.todayStr(), requestId:req.id
+      date:Utils.todayStr(), requestId:req.id, targetDate:f.targetDate?.value || ''
     });
     App.closeModal(); this.refresh(); Utils.showToast('Task added','success');
   },
@@ -227,6 +241,7 @@ const Kanban = {
         ${t.requestBy?`<div><span style="color:var(--text-muted)">Sales:</span> <span style="color:var(--text-primary)">${Utils.escapeHtml(t.requestBy)}</span></div>`:''}
         ${t.customer?`<div><span style="color:var(--text-muted)">Customer:</span> <span style="color:var(--text-primary)">${Utils.escapeHtml(t.customer)}</span></div>`:''}
         ${t.location?`<div><span style="color:var(--text-muted)">📍 Location:</span> <span style="color:var(--text-primary)">${Utils.escapeHtml(t.location)}</span></div>`:''}
+        ${t.targetDate?`<div><span style="color:var(--text-muted)">🎯 Target Done:</span> ${this.targetBadge(t)}</div>`:''}
         ${t.boqLink?`<div><span style="color:var(--text-muted)">🔗 BoQ:</span> <a href="${Utils.escapeHtml(t.boqLink)}" target="_blank" class="link-btn">Open Drive</a></div>`:''}
       </div>
       <!-- Pipeline Timeline -->

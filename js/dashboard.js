@@ -61,6 +61,10 @@ const Dashboard = {
     const scopePS = tasks.filter(t => t.scopePS).length;
     const scopeMS = tasks.filter(t => t.scopeMS).length;
     const maxScope = Math.max(scopePL, scopePS, scopeMS, 1);
+    // Scope yang masih aktif (belum done) — untuk follow-up per scope
+    const scopeActPL = tasks.filter(t => t.scopePL && t.pipelineStatus !== 'done').length;
+    const scopeActPS = tasks.filter(t => t.scopePS && t.pipelineStatus !== 'done').length;
+    const scopeActMS = tasks.filter(t => t.scopeMS && t.pipelineStatus !== 'done').length;
 
     // Per division - win rate
     const divStats = { NETCO:{total:0,win:0,lose:0,open:0}, OMG:{total:0,win:0,lose:0,open:0}, ITSOL:{total:0,win:0,lose:0,open:0} };
@@ -76,7 +80,16 @@ const Dashboard = {
     // Cycle time
     const cycleTimes = tasks.filter(t=>t.pipelineHistory&&t.pipelineHistory.length>1).map(t=>Utils.calcCycleTime(t.pipelineHistory)).filter(ms=>ms!==null);
     const avgCycle = cycleTimes.length ? Math.round(cycleTimes.reduce((a,b)=>a+b,0)/cycleTimes.length) : 0;
+    const sortedCycle = [...cycleTimes].sort((a,b)=>a-b);
+    const medCycle = sortedCycle.length ? sortedCycle[Math.floor(sortedCycle.length/2)] : 0;
     const stuckTasks = tasks.filter(t=>{ if(!t.pipelineHistory||t.pipelineStatus==='done')return false; const la=new Date(t.pipelineHistory[t.pipelineHistory.length-1].at).getTime(); return (Date.now()-la)>3*24*60*60*1000; }).length;
+
+    // Target date (targetDone) — overdue & due soon
+    const today0 = new Date(); today0.setHours(0,0,0,0);
+    const soon3 = new Date(today0); soon3.setDate(soon3.getDate()+3);
+    const overdueT = tasks.filter(t => t.targetDate && t.pipelineStatus !== 'done' && new Date(t.targetDate+'T00:00:00') < today0).length;
+    const dueSoonT = tasks.filter(t => t.targetDate && t.pipelineStatus !== 'done' && new Date(t.targetDate+'T00:00:00') >= today0 && new Date(t.targetDate+'T00:00:00') <= soon3).length;
+    const hasTarget = tasks.filter(t => t.targetDate).length;
 
     // Customer breakdown
     const custMap = {};
@@ -141,11 +154,19 @@ const Dashboard = {
           <div class="kpi-label">Active Pipeline</div>
           <div class="kpi-value">${active}</div>
           <div class="kpi-sub">${done} Done · ${revisi} Revisi · ${highPrio} <span style="color:var(--red)">High</span></div>
+          <div class="kpi-sub" style="margin-top:3px;font-size:0.66rem">
+            <span style="color:var(--blue);font-weight:600">PL ${scopeActPL}</span> ·
+            <span style="color:var(--purple);font-weight:600">PS ${scopeActPS}</span> ·
+            <span style="color:var(--cyan);font-weight:600">MS ${scopeActMS}</span>
+            <span style="color:var(--text-muted)">aktif</span>
+            ${overdueT>0?` · <span style="color:var(--red);font-weight:600">⚠ ${overdueT} overdue</span>`:''}
+          </div>
         </div>
         <div class="kpi-card">
-          <div class="kpi-label">Avg. Cycle Time</div>
+          <div class="kpi-label" title="Cycle time = waktu dari status pertama hingga status saat ini/Done (dari pipelineHistory). Task yang baru punya 1 entry history tidak dihitung. Karena data di-backfill dari awal 2026, nilai ini bisa tampak besar — lihat median sebagai pembanding.">Avg. Cycle Time ⓘ</div>
           <div class="kpi-value" style="font-size:1.6rem">${Utils.formatDuration(avgCycle)}</div>
-          <div class="kpi-sub">${cycleTimes.length} tasks · ${stuckTasks>0?`<span style="color:var(--orange)">⚠${stuckTasks} stuck >3d</span>`:'No stuck'}</div>
+          <div class="kpi-sub">median ${Utils.formatDuration(medCycle)} · dari ${cycleTimes.length} task</div>
+          <div class="kpi-sub" style="font-size:0.66rem;color:var(--text-muted)">${stuckTasks>0?`<span style="color:var(--orange)">⚠${stuckTasks} stuck >3d</span>`:'No stuck'}</div>
         </div>
       </div>
 
@@ -175,36 +196,50 @@ const Dashboard = {
         </div>
 
         <div class="card">
-          <div class="card-header"><h3 class="card-title">Scope Breakdown</h3></div>
+          <div class="card-header"><h3 class="card-title">Scope Pipeline</h3>
+            <span style="font-size:0.68rem;color:var(--text-muted)" title="Aktif = belum done (perlu follow-up)">Aktif vs Done</span>
+          </div>
           <div class="bar-chart" style="margin-top:8px">
             ${[
-              { key:'PL', count:scopePL, color:'var(--blue)', pct:Math.round((scopePL/totalTasks||0)*100) },
-              { key:'PS', count:scopePS, color:'var(--purple)', pct:Math.round((scopePS/totalTasks||0)*100) },
-              { key:'MS', count:scopeMS, color:'var(--cyan)', pct:Math.round((scopeMS/totalTasks||0)*100) }
+              { key:'PL', total:scopePL, act:scopeActPL, color:'var(--blue)' },
+              { key:'PS', total:scopePS, act:scopeActPS, color:'var(--purple)' },
+              { key:'MS', total:scopeMS, act:scopeActMS, color:'var(--cyan)' }
             ].map(s => {
-              const barPct = (s.count/maxScope)*100;
+              const don = s.total - s.act;
+              const actPct = (s.total>0 ? s.act/s.total : 0) * 100;
               return `<div class="bar-row">
                 <div class="bar-label" style="color:${s.color};font-weight:600">${s.key}</div>
-                <div class="bar-track"><div class="bar-fill" style="width:${barPct}%;background:${s.color};border-radius:3px">${barPct>25?`<span class="bar-value">${s.count}</span>`:''}</div></div>
-                <div style="font-size:0.68rem;color:var(--text-muted);min-width:40px;text-align:right">${s.pct}%</div>
+                <div class="bar-track" style="display:flex">
+                  <div class="bar-fill" style="width:${actPct}%;background:${s.color};border-radius:3px 0 0 3px">${actPct>20?`<span class="bar-value">${s.act}</span>`:''}</div>
+                  <div class="bar-fill" style="width:${100-actPct}%;background:var(--green);opacity:0.28;border-radius:0 3px 3px 0">${100-actPct>20?`<span class="bar-value" style="text-shadow:none;color:var(--green);opacity:0.9">${don}</span>`:''}</div>
+                </div>
+                <div style="font-size:0.68rem;color:var(--text-secondary);min-width:74px;text-align:right;font-weight:600">${s.act} aktif<br><span style="font-weight:400;color:var(--green)">${don} done</span></div>
               </div>`;
             }).join('')}
           </div>
-          <div style="margin-top:6px;font-size:0.64rem;color:var(--text-muted);text-align:center">% dari ${totalTasks} task · Multi-scope task dihitung per scope</div>
+          <div style="margin-top:6px;font-size:0.64rem;color:var(--text-muted);text-align:center">
+            <span style="color:var(--blue)">■</span> aktif (follow-up) · <span style="color:var(--green)">▨</span> done · total: PL ${scopePL} · PS ${scopePS} · MS ${scopeMS}
+          </div>
         </div>
       </div>
 
       <!-- ======== ROW 3: Division Breakdown (2) + Win Rate (2) ======== -->
       <div class="dash-grid-2">
         <div class="card">
-          <div class="card-header"><h3 class="card-title">Division Breakdown — Tasks</h3></div>
+          <div class="card-header"><h3 class="card-title">Division Breakdown — Tasks</h3>
+            <span style="font-size:0.72rem;color:var(--text-muted)">angka = jumlah · % = porsi</span>
+          </div>
           <div class="bar-chart" style="margin-top:8px">
             ${[{ div:'NETCO',color:'netco',col:'var(--netco)' },{ div:'OMG',color:'omg',col:'var(--omg)' },{ div:'ITSOL',color:'itsol',col:'var(--itsol)' }].map(d => {
               const c = divs[d.div]; const pct = maxDiv>0?(c/maxDiv)*100:0;
+              const pctTotal = totalTasks>0?Math.round((c/totalTasks)*100):0;
+              const showIn = pct > 18;
               return `<div class="bar-row">
                 <div class="bar-label" style="color:${d.col}">${d.div}</div>
-                <div class="bar-track"><div class="bar-fill ${d.color}" style="width:${pct}%">${pct>25?`<span class="bar-value">${c}</span>`:''}</div></div>
-                <div class="bar-count">${c}</div>
+                <div class="bar-track">${showIn
+                  ? `<div class="bar-fill ${d.color}" style="width:${pct}%"><span class="bar-value">${c}</span></div>`
+                  : `<div class="bar-fill ${d.color}" style="width:${pct}%"></div><span class="bar-value-out" style="left:calc(${pct}% + 8px)">${c}</span>`}</div>
+                <div class="bar-count">${pctTotal}%</div>
               </div>`;
             }).join('')}
           </div>
@@ -249,6 +284,37 @@ const Dashboard = {
           <div class="kpi-value" style="font-size:1.8rem;color:var(--text-primary)">${uniqueCust}</div>
           <div class="kpi-sub">Across divisions</div>
         </div>
+      </div>
+
+      <!-- ======== Target Done Pipeline ======== -->
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-header">
+          <h3 class="card-title">🎯 Target Done Pipeline</h3>
+          <span style="font-size:0.72rem;color:var(--text-muted)">${hasTarget} dari ${totalTasks} task punya target</span>
+        </div>
+        ${hasTarget===0?`<p style="color:var(--text-muted);font-size:0.82rem;text-align:center;padding:12px">Belum ada task dengan Target Done — isi tanggal target saat menambah/edit task untuk memonitor deadline.</p>`:`
+        <div class="kpi-grid" style="margin-top:6px">
+          <div class="kpi-card" style="padding:12px 16px">
+            <div class="kpi-label" style="margin-bottom:2px;color:var(--red)">Overdue</div>
+            <div class="kpi-value" style="font-size:1.5rem;color:var(--red)">${overdueT}</div>
+            <div class="kpi-sub">Lewat target & belum done</div>
+          </div>
+          <div class="kpi-card" style="padding:12px 16px">
+            <div class="kpi-label" style="margin-bottom:2px;color:var(--orange)">Due ≤3 hari</div>
+            <div class="kpi-value" style="font-size:1.5rem;color:var(--orange)">${dueSoonT}</div>
+            <div class="kpi-sub">Target mendekat</div>
+          </div>
+          <div class="kpi-card" style="padding:12px 16px">
+            <div class="kpi-label" style="margin-bottom:2px">On Track</div>
+            <div class="kpi-value" style="font-size:1.5rem">${hasTarget - overdueT - dueSoonT - tasks.filter(t=>t.targetDate && t.pipelineStatus==='done').length}</div>
+            <div class="kpi-sub">Target &gt;3 hari, belum done</div>
+          </div>
+          <div class="kpi-card" style="padding:12px 16px">
+            <div class="kpi-label" style="margin-bottom:2px;color:var(--green)">Selesai</div>
+            <div class="kpi-value" style="font-size:1.5rem;color:var(--green)">${tasks.filter(t=>t.targetDate && t.pipelineStatus==='done').length}</div>
+            <div class="kpi-sub">Done tepat/lebih awal</div>
+          </div>
+        </div>`}
       </div>
 
       <!-- ======== ROW 5: Customer (2) + End User (2) ======== -->

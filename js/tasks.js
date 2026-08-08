@@ -143,7 +143,7 @@ const Tasks = {
                 <th>No</th>${Utils.sortableTh('Date','date',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Request','subjectRequest',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Subject Task','subjectTask',this.sortKey,this.sortDir,'Tasks')}
                 ${Utils.sortableTh('Sales','requestBy',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Customer','customer',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('End User','endUser',this.sortKey,this.sortDir,'Tasks')}
                 ${Utils.sortableTh('Division','division',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Category','category',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Scope','scope',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Location','location',this.sortKey,this.sortDir,'Tasks')}
-                ${Utils.sortableTh('Priority','priority',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Pipeline','pipelineStatus',this.sortKey,this.sortDir,'Tasks')}<th>🔗 BoQ</th><th></th>
+                ${Utils.sortableTh('Priority','priority',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Pipeline','pipelineStatus',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Target','targetDate',this.sortKey,this.sortDir,'Tasks')}<th>🔗 BoQ</th><th></th>
               </tr>
             </thead>
             <tbody id="taskTableBody">
@@ -200,6 +200,7 @@ const Tasks = {
         <td data-label="Location">${Utils.escapeHtml(t.location||'—')}</td>
         <td data-label="Priority">${t.priority==='High'?'<span class="badge badge-red">High</span>':'<span class="badge badge-neutral">Normal</span>'}</td>
         <td data-label="Pipeline">${Utils.pipeBadge(t.pipelineStatus)}</td>
+        <td data-label="Target">${this.targetBadge(t)}</td>
         <td data-label="BoQ">
           ${t.boqLink?`<a href="${Utils.escapeHtml(t.boqLink)}" target="_blank" class="link-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>Open</a>`:'<span style="color:var(--text-muted);font-size:0.72rem">—</span>'}
         </td>
@@ -240,6 +241,19 @@ const Tasks = {
   },
 
   refresh() { document.getElementById('mainContent').innerHTML = this.render(); Utils.initComboboxes(document.getElementById('mainContent')); },
+
+  /* Badge Target Done: merah = overdue & belum done, oranye = ≤3 hari, hijau = done */
+  targetBadge(t) {
+    if (!t.targetDate) return '<span style="color:var(--text-muted);font-size:0.72rem">—</span>';
+    const target = new Date(t.targetDate + 'T00:00:00');
+    const today = new Date(); today.setHours(0,0,0,0);
+    const diff = Math.round((target - today) / 86400000);
+    const d = Utils.formatDateShort(t.targetDate);
+    if (t.pipelineStatus === 'done') return `<span class="badge badge-green" style="font-size:0.62rem">✓ ${d}</span>`;
+    if (diff < 0) return `<span class="badge badge-red" style="font-size:0.62rem" title="Terlambat ${-diff} hari">⚠ ${d} (+${-diff}h)</span>`;
+    if (diff <= 3) return `<span class="badge badge-orange" style="font-size:0.62rem" title="Tersisa ${diff} hari">🎯 ${d}</span>`;
+    return `<span class="badge badge-neutral" style="font-size:0.62rem">${d}</span>`;
+  },
 
   openModal(editId = null) {
     const task = editId ? Storage.getTasks().find(t => t.id === editId) : null;
@@ -343,6 +357,11 @@ const Tasks = {
               <option value="revisi" ${task?.pipelineStatus==='revisi'?'selected':''}>Revisi</option>
             </select>
           </div>
+          <div class="form-group">
+            <label class="form-label">🎯 Target Done</label>
+            <input type="date" class="form-input" name="targetDate" value="${Utils.escapeHtml(task?.targetDate||'')}">
+            <div class="form-hint">Tanggal target penyelesaian (opsional).</div>
+          </div>
         </div>
         <div class="form-group">
           <label class="form-label">🔗 Link BoQ (Google Drive)</label>
@@ -383,7 +402,7 @@ const Tasks = {
       scopePS:f.scopePS.checked, scopeMS:f.scopeMS.checked,
       location:f.location.value.trim(), priority:f.priority.value,
       pipelineStatus:f.pipelineStatus.value, boqLink:f.boqLink.value.trim(),
-      category:f.category.value
+      category:f.category.value, targetDate:f.targetDate.value || ''
     };
     if (!d.subjectTask) return Utils.showToast('Subject Task wajib diisi','error');
     if (!d.requestId) return Utils.showToast('Pilih Request','error');
