@@ -215,12 +215,14 @@ const Kanban = {
     const req = Storage.getRequests().find(r => r.id === f.requestId.value);
     if (!req) return Utils.showToast('Select a request','error');
     Utils.addLocation(f.location.value);
+    const targetDate = f.targetDate?.value || '';
     Storage.addTask({
       subjectTask:f.subjectTask.value.trim(), pipelineStatus:f.pipelineStatus.value,
-      priority:f.priority.value, location:f.location.value.trim(),
+      priority: (targetDate && f.pipelineStatus.value !== 'done' && targetDate < Utils.todayStr()) ? 'High' : f.priority.value,
+      location:f.location.value.trim(),
       subjectRequest:req.subject, requestBy:req.requestBy, customer:req.customer,
       endUser:req.endUser, scopePL:req.scopePL, scopePS:req.scopePS, scopeMS:req.scopeMS,
-      date:Utils.todayStr(), requestId:req.id, targetDate:f.targetDate?.value || ''
+      date:Utils.todayStr(), requestId:req.id, targetDate
     });
     App.closeModal(); this.refresh(); Utils.showToast('Task added','success');
   },

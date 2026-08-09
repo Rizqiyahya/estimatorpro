@@ -407,6 +407,11 @@ const Tasks = {
     if (!d.subjectTask) return Utils.showToast('Subject Task wajib diisi','error');
     if (!d.requestId) return Utils.showToast('Pilih Request','error');
 
+    // Auto-set High priority when target date is overdue
+    if (d.targetDate && d.pipelineStatus !== 'done' && d.targetDate < Utils.todayStr()) {
+      d.priority = 'High';
+    }
+
     // Remember custom location for future autocomplete suggestions
     Utils.addLocation(d.location);
 

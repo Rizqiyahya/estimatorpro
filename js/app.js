@@ -26,6 +26,8 @@ const App = {
       await Storage.syncFromCloud();
       Storage.listenToCloud();
     }
+    // Auto-set High priority for tasks past their target date
+    Storage.autoPrioritize();
 
     // Bind login gate events
     Auth.bindLoginGate();

@@ -192,6 +192,20 @@ const Storage = {
     return null;
   },
   deleteTask(id) { this.saveTasks(this.getTasks().filter(t => t.id !== id)); this._cloudPush('delTask', { id }); },
+  autoPrioritize() {
+    const tasks = this.getTasks();
+    const today = Utils.todayStr();
+    let changed = false;
+    tasks.forEach(t => {
+      if (t.pipelineStatus !== 'done' && t.targetDate && t.targetDate < today && t.priority !== 'High') {
+        t.priority = 'High';
+        t.updatedAt = new Date().toISOString();
+        changed = true;
+      }
+    });
+    if (changed) this.saveTasks(tasks);
+    return changed;
+  },
   getTasksByRequest(rid) { return this.getTasks().filter(t => t.requestId === rid); },
 
   // Estimates
