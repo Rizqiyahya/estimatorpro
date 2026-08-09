@@ -210,8 +210,8 @@ const Dashboard = {
               return `<div class="bar-row">
                 <div class="bar-label" style="color:${s.color};font-weight:600">${s.key}</div>
                 <div class="bar-track" style="display:flex">
-                  <div class="bar-fill" style="width:${actPct}%;background:${s.color};border-radius:3px 0 0 3px">${actPct>20?`<span class="bar-value">${s.act}</span>`:''}</div>
-                  <div class="bar-fill" style="width:${100-actPct}%;background:var(--green);opacity:0.28;border-radius:0 3px 3px 0">${100-actPct>20?`<span class="bar-value" style="text-shadow:none;color:var(--green);opacity:0.9">${don}</span>`:''}</div>
+                  <div class="bar-fill" style="width:${actPct}%;background:${s.color};border-radius:3px 0 0 3px"><span class="bar-value">${s.act}</span></div>
+                  <div class="bar-fill" style="width:${100-actPct}%;background:var(--green);opacity:0.28;border-radius:0 3px 3px 0"><span class="bar-value" style="text-shadow:none;color:var(--green);opacity:0.9">${don}</span></div>
                 </div>
                 <div style="font-size:0.68rem;color:var(--text-secondary);min-width:74px;text-align:right;font-weight:600">${s.act} aktif<br><span style="font-weight:400;color:var(--green)">${don} done</span></div>
               </div>`;
@@ -233,12 +233,9 @@ const Dashboard = {
             ${[{ div:'NETCO',color:'netco',col:'var(--netco)' },{ div:'OMG',color:'omg',col:'var(--omg)' },{ div:'ITSOL',color:'itsol',col:'var(--itsol)' }].map(d => {
               const c = divs[d.div]; const pct = maxDiv>0?(c/maxDiv)*100:0;
               const pctTotal = totalTasks>0?Math.round((c/totalTasks)*100):0;
-              const showIn = pct > 18;
               return `<div class="bar-row">
                 <div class="bar-label" style="color:${d.col}">${d.div}</div>
-                <div class="bar-track">${showIn
-                  ? `<div class="bar-fill ${d.color}" style="width:${pct}%"><span class="bar-value">${c}</span></div>`
-                  : `<div class="bar-fill ${d.color}" style="width:${pct}%"></div><span class="bar-value-out" style="left:calc(${pct}% + 8px)">${c}</span>`}</div>
+                <div class="bar-track"><div class="bar-fill ${d.color}" style="width:${pct}%"><span class="bar-value">${c}</span></div></div>
                 <div class="bar-count">${pctTotal}%</div>
               </div>`;
             }).join('')}
