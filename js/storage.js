@@ -145,8 +145,53 @@ const Storage = {
   },
   updateRequest(id, u) {
     const a = this.getRequests(); const i = a.findIndex(r => r.id === id);
-    if (i!==-1) { a[i] = {...a[i],...u,updatedAt:new Date().toISOString()}; this.saveRequests(a); this._cloudPush('updReq', a[i]); return a[i]; }
+    if (i!==-1) {
+      const oldStatus = a[i].status;
+      a[i] = {...a[i],...u,updatedAt:new Date().toISOString()};
+      this.saveRequests(a);
+      // Cascade status change to linked tasks
+      const newStatus = a[i].status;
+      if (newStatus !== oldStatus) {
+        if (newStatus === 'lose' && oldStatus === 'open') {
+          this._cascadeTaskStatus(id, 'done', oldStatus);
+          Utils.showToast('Request Drop/Lose → semua task di-mark Done', 'info');
+        } else if (newStatus === 'open' && oldStatus === 'lose') {
+          this._cascadeTaskStatus(id, 'todo', oldStatus);
+          Utils.showToast('Request dibuka kembali → semua task kembali ke To Do', 'info');
+        }
+      }
+      this._cloudPush('updReq', a[i]); return a[i];
+    }
     return null;
+  },
+
+  /* Cascade request status change → update all linked task pipeline status */
+  _cascadeTaskStatus(requestId, newPipeline, _oldReqStatus) {
+    const tasks = this.getTasks();
+    let changed = false;
+    tasks.forEach(t => {
+      if (t.requestId === requestId && t.pipelineStatus !== newPipeline) {
+        const oldTaskStatus = t.pipelineStatus;
+        t.pipelineStatus = newPipeline;
+        t.updatedAt = new Date().toISOString();
+        // Track pipeline history
+        if (!t.pipelineHistory) t.pipelineHistory = [];
+        t.pipelineHistory.push({
+          status: newPipeline,
+          from: oldTaskStatus,
+          at: new Date().toISOString(),
+          by: Auth.getUser()?.email || 'local'
+        });
+        changed = true;
+      }
+    });
+    if (changed) {
+      this.saveTasks(tasks);
+      // Push each changed task to cloud
+      tasks.filter(t => t.requestId === requestId).forEach(t => {
+        this._cloudPush('updTask', t);
+      });
+    }
   },
   deleteRequest(id) {
     this.saveRequests(this.getRequests().filter(r => r.id !== id));
