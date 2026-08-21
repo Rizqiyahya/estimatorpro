@@ -4,6 +4,45 @@
    ============================================================ */
 
 /* ============================================================
+   EXPORT MENU
+   ============================================================ */
+.export-menu { position:relative; display:inline-block; }
+.export-menu > .btn span { margin-left:5px; font-size:12px; }
+.export-menu-list { display:none; position:absolute; z-index:50; top:calc(100% + 6px); right:0; min-width:205px; padding:5px; border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-primary); box-shadow:0 10px 24px rgba(15,23,42,.15); }
+.export-menu-list.is-open { display:block; }
+.export-menu-list button { display:flex; width:100%; align-items:baseline; gap:6px; border:0; border-radius:5px; padding:9px 10px; color:var(--text-primary); background:transparent; font:inherit; font-size:12px; text-align:left; cursor:pointer; }
+.export-menu-list button:hover { background:var(--bg-secondary); }
+.export-menu-list small { margin-left:auto; color:var(--text-muted); font-size:9px; white-space:nowrap; }
+
+/* ============================================================
+   WBS PRESENTATION / PROPOSAL
+   ============================================================ */
+.wbs-presentation { background:var(--bg-primary); border:1px solid var(--border); border-radius:var(--radius-lg); padding:24px; }
+.wbs-present-hero { display:flex; justify-content:space-between; gap:24px; border-bottom:2px solid var(--border); padding-bottom:18px; margin-bottom:20px; }
+.wbs-present-kicker { font-size:10px; font-weight:700; letter-spacing:1.2px; color:var(--text-muted); }
+.wbs-present-hero h2 { margin:6px 0; font-size:24px; }
+.wbs-present-hero p { margin:0; max-width:680px; color:var(--text-secondary); font-size:13px; }
+.wbs-present-summary { display:grid; grid-template-columns:repeat(4,auto); align-content:center; gap:3px 13px; text-align:center; white-space:nowrap; }
+.wbs-present-summary strong { color:var(--text-primary); font-size:20px; }
+.wbs-present-summary span { color:var(--text-muted); font-size:9px; text-transform:uppercase; }
+.wbs-present-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+.wbs-present-phase { border:1px solid var(--border); border-top:4px solid var(--wbs-color); border-radius:6px; padding:14px; }
+.wbs-present-phase header { display:flex; align-items:center; gap:9px; margin-bottom:11px; }
+.wbs-present-num { padding:4px 7px; border-radius:3px; background:var(--wbs-color); color:#fff; font-size:11px; font-weight:700; }
+.wbs-present-phase h3 { margin:0; font-size:15px; }
+.wbs-present-deliverable { padding:9px 0; border-top:1px solid var(--border); }
+.wbs-present-deliv-title { display:grid; grid-template-columns:36px 1fr auto; gap:7px; font-size:11px; }
+.wbs-present-deliv-title > span { color:var(--wbs-color); font-weight:700; }
+.wbs-present-deliv-title em { color:var(--text-muted); font-size:9px; font-style:normal; white-space:nowrap; }
+.wbs-present-deliverable ol { list-style:none; padding:0; margin:7px 0 0; }
+.wbs-present-deliverable li { display:grid; grid-template-columns:43px 1fr auto; gap:6px; padding:3px 0; font-size:10px; }
+.wbs-present-act-num { color:var(--text-muted); }
+.wbs-present-deliverable li b { color:var(--text-secondary); font-size:9px; white-space:nowrap; }
+.wbs-present-empty { padding:8px 0; color:var(--text-muted); font-size:10px; }
+.wbs-present-footer { display:flex; justify-content:space-between; margin-top:22px; padding-top:9px; border-top:1px solid var(--border); color:var(--text-muted); font-size:9px; }
+@media (max-width:800px) { .wbs-present-hero{display:block}.wbs-present-summary{margin-top:16px;justify-content:start}.wbs-present-grid{grid-template-columns:1fr} }
+
+/* ============================================================
    LOGIN GATE
    ============================================================ */
 .login-gate {

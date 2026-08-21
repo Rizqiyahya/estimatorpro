@@ -114,19 +114,23 @@ const Utils = {
 
   /* Normalize legacy category keys to new tool-aligned keys */
   normalizeCat(c) {
-    const map = { pembuatan_boq:'boq', ajuan_solusi_teknis:'wbs', proposal_teknis:'proptek' };
+    // WBS dan Timeline adalah satu alur perencanaan: WBS membentuk scope,
+    // sedangkan Gantt memvisualkan jadwal dari aktivitas WBS yang sama.
+    // `proposal_teknis` lama dialihkan ke Planning, karena output teknis kini
+    // dibangun melalui kombinasi BoQ, WBS & Gantt, serta STO.
+    const map = { pembuatan_boq:'boq', ajuan_solusi_teknis:'planning', proposal_teknis:'planning', wbs:'planning', timeline:'planning', proptek:'planning' };
     return map[c] || c;
   },
 
   /* Map task category → tool view route */
   toolForCategory(cat) {
-    const map = { boq:'#estimates', wbs:'#wbs', timeline:'#gantt', sto:'#sto', proptek:'#proptek' };
+    const map = { boq:'#estimates', planning:'#wbs', sto:'#sto' };
     return map[this.normalizeCat(cat)] || null;
   },
 
   /* Human label of the tool for a category */
   toolLabel(cat) {
-    const map = { boq:'Estimasi', wbs:'WBS Builder', timeline:'Gantt Chart', sto:'STO', proptek:'Proptek' };
+    const map = { boq:'Estimasi', planning:'WBS Builder & Gantt Chart', sto:'Struktur Organisasi' };
     return map[this.normalizeCat(cat)] || null;
   },
 
@@ -135,17 +139,13 @@ const Utils = {
     c = this.normalizeCat(c);
     const m = {
       boq: 'badge-amber',
-      wbs: 'badge-purple',
-      timeline: 'badge-blue',
-      sto: 'badge-green',
-      proptek: 'badge-cyan'
+      planning: 'badge-purple',
+      sto: 'badge-green'
     };
     const l = {
       boq: 'BoQ',
-      wbs: 'WBS',
-      timeline: 'Timeline',
-      sto: 'STO',
-      proptek: 'Proptek'
+      planning: 'WBS & Gantt',
+      sto: 'STO'
     };
     if (!c) return '<span class="badge badge-neutral">—</span>';
     return `<span class="badge ${m[c] || 'badge-neutral'}">${l[c] || c}</span>`;
@@ -153,16 +153,18 @@ const Utils = {
 
   /* All category options for dropdowns */
   catOptions(selected) {
-    const cats = ['boq','wbs','timeline','sto','proptek'];
-    const labels = ['BoQ','WBS','Timeline','STO','Proptek'];
+    selected = this.normalizeCat(selected);
+    const cats = ['boq','planning','sto'];
+    const labels = ['BoQ','WBS & Gantt','STO'];
     const none = '<option value="">— Semua Kategori —</option>';
     const opts = cats.map((c,i) => `<option value="${c}" ${c===selected?'selected':''}>${labels[i]}</option>`).join('');
     return none + opts;
   },
 
   catOptionsNoAll(selected) {
-    const cats = ['boq','wbs','timeline','sto','proptek'];
-    const labels = ['BoQ','WBS','Timeline','STO','Proptek'];
+    selected = this.normalizeCat(selected);
+    const cats = ['boq','planning','sto'];
+    const labels = ['BoQ','WBS & Gantt','STO'];
     return '<option value="">— Pilih —</option>' + cats.map((c,i) => `<option value="${c}" ${c===selected?'selected':''}>${labels[i]}</option>`).join('');
   },
 

@@ -6,6 +6,7 @@ const App = {
   currentRoute: 'dashboard',
 
   async init() {
+    document.addEventListener('click', () => document.querySelectorAll('.export-menu-list.is-open').forEach(menu => menu.classList.remove('is-open')));
     const settings = Storage.getSettings();
     document.documentElement.setAttribute('data-theme', settings.theme || 'dark');
 

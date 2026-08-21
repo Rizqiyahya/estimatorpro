@@ -27,7 +27,7 @@ const Tasks = {
       tasks = tasks.filter(t => reqIds.includes(t.requestId));
     }
     if (this.filterPipe !== 'all') tasks = tasks.filter(t => t.pipelineStatus === this.filterPipe);
-    if (this.filterCat !== 'all') tasks = tasks.filter(t => (t.category || '') === this.filterCat);
+    if (this.filterCat !== 'all') tasks = tasks.filter(t => Utils.normalizeCat(t.category || '') === this.filterCat);
     if (this.filterScope !== 'all') tasks = tasks.filter(t => {
       if (this.filterScope === 'PL') return t.scopePL;
       if (this.filterScope === 'PS') return t.scopePS;
