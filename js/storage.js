@@ -100,6 +100,8 @@ const Storage = {
       if (op === 'addTask') return await DB.addTask(data);
       if (op === 'updTask') return await DB.updateTask(data.id, data);
       if (op === 'delTask') return await DB.deleteTask(data.id);
+      // Saat bootstrap data lama, estimate/WBS bisa telah ada di cloud.
+      // Gunakan update langsung jika insert bertabrakan agar tidak membaca `data` null.
       if (op === 'addEst') return await DB.addEstimate(data);
       if (op === 'updEst') return await DB.updateEstimate(data.id, data);
       if (op === 'delEst') return await DB.deleteEstimate(data.id);

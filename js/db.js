@@ -215,7 +215,8 @@ const DB = {
       unit_price: e.unitPrice || null, total_price: e.totalPrice || null,
       notes: e.notes || '', created_by: await this._getUserId()
     };
-    const { data } = await this._supabase.from('estimates').insert(row).select().single();
+    const { data, error } = await this._supabase.from('estimates').insert(row).select().single();
+    if (error) throw error;
     return { ...data, taskId: data.task_id, unitPrice: data.unit_price, totalPrice: data.total_price };
   },
 
@@ -227,18 +228,21 @@ const DB = {
       if (map[k]) row[map[k]] = v;
       else if (['item', 'category', 'quantity', 'unit', 'notes'].includes(k)) row[k] = v;
     }
-    await this._supabase.from('estimates').update(row).eq('id', id);
-    return u;
+    const { data, error } = await this._supabase.from('estimates').update(row).eq('id', id).select().single();
+    if (error) throw error;
+    return { ...data, taskId: data.task_id, unitPrice: data.unit_price, totalPrice: data.total_price };
   },
 
   async deleteEstimate(id) {
     if (this._mode === 'local') return Storage.deleteEstimate(id);
-    await this._supabase.from('estimates').delete().eq('id', id);
+    const { error } = await this._supabase.from('estimates').delete().eq('id', id);
+    if (error) throw error;
   },
 
   async getEstimatesByTask(tid) {
     if (this._mode === 'local') return Storage.getEstimatesByTask(tid);
-    const { data } = await this._supabase.from('estimates').select('*').eq('task_id', tid);
+    const { data, error } = await this._supabase.from('estimates').select('*').eq('task_id', tid);
+    if (error) throw error;
     return (data || []).map(e => ({
       ...e, taskId: e.task_id, unitPrice: e.unit_price, totalPrice: e.total_price,
       createdAt: e.created_at, updatedAt: e.updated_at || e.created_at
@@ -264,7 +268,8 @@ const DB = {
       name: w.name || '', start_date: w.startDate || null, duration_days: w.durationDays || null,
       seq: w.seq || 0, created_by: await this._getUserId()
     };
-    const { data } = await this._supabase.from('wbs').insert(row).select().single();
+    const { data, error } = await this._supabase.from('wbs').insert(row).select().single();
+    if (error) throw error;
     return { ...data, taskId: data.task_id, parentId: data.parent_id, startDate: data.start_date, durationDays: data.duration_days };
   },
 
@@ -276,18 +281,21 @@ const DB = {
       if (map[k]) row[map[k]] = v;
       else if (['name', 'level', 'seq'].includes(k)) row[k] = v;
     }
-    await this._supabase.from('wbs').update(row).eq('id', id);
-    return u;
+    const { data, error } = await this._supabase.from('wbs').update(row).eq('id', id).select().single();
+    if (error) throw error;
+    return { ...data, taskId: data.task_id, parentId: data.parent_id, startDate: data.start_date, durationDays: data.duration_days };
   },
 
   async deleteWbsItem(id) {
     if (this._mode === 'local') return Storage.deleteWbsItem(id);
-    await this._supabase.from('wbs').delete().eq('id', id);
+    const { error } = await this._supabase.from('wbs').delete().eq('id', id);
+    if (error) throw error;
   },
 
   async getWbsByTask(tid) {
     if (this._mode === 'local') return Storage.getWbsByTask(tid);
-    const { data } = await this._supabase.from('wbs').select('*').eq('task_id', tid).order('seq', { ascending: true });
+    const { data, error } = await this._supabase.from('wbs').select('*').eq('task_id', tid).order('seq', { ascending: true });
+    if (error) throw error;
     return (data || []).map(w => ({
       ...w, taskId: w.task_id, parentId: w.parent_id, startDate: w.start_date, durationDays: w.duration_days,
       createdAt: w.created_at, updatedAt: w.updated_at || w.created_at
