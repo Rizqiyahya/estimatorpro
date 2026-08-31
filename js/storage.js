@@ -57,64 +57,125 @@ const Storage = {
     console.log('🔄 ID migration complete');
   },
 
-  /* ---- Cloud background sync ---- */
-  _cloudPush(op, data) {
-    if (!DB.isCloud() || !Auth.getUser()) return; // Must be logged in
-    // Fire & forget — don't block UI
-    (async () => {
-      try {
-        if (op === 'addReq') await DB.addRequest(data);
-        else if (op === 'updReq') await DB.updateRequest(data.id, data);
-        else if (op === 'delReq') await DB.deleteRequest(data.id);
-        else if (op === 'addTask') await DB.addTask(data);
-        else if (op === 'updTask') await DB.updateTask(data.id, data);
-        else if (op === 'delTask') await DB.deleteTask(data.id);
-        else if (op === 'addEst') await DB.addEstimate(data);
-        else if (op === 'updEst') await DB.updateEstimate(data.id, data);
-        else if (op === 'delEst') await DB.deleteEstimate(data.id);
-        else if (op === 'addWbs') await DB.addWbsItem(data);
-        else if (op === 'updWbs') await DB.updateWbsItem(data.id, data);
-        else if (op === 'delWbs') await DB.deleteWbsItem(data.id);
-      } catch(e) { console.warn('Cloud sync error:', e.message); }
-    })();
+  /* ---- Cloud sync: antrean persisten, retry, dan merge aman ---- */
+  _queueKey: 'ep2_cloud_queue',
+  _syncState: 'lokal',
+  _syncing: false,
+  _retryTimer: null,
+  _loadQueue() { return this._load(this._queueKey); },
+  _saveQueue(queue) { this._save(this._queueKey, queue); },
+  _setSyncState(state, detail = '') {
+    this._syncState = state;
+    const el = document.getElementById('syncStatus');
+    if (!el) return;
+    const labels = { lokal: 'Mode lokal', syncing: 'Menyinkronkan…', synced: 'Tersinkron', pending: 'Menunggu sinkronisasi', error: 'Sinkronisasi gagal' };
+    el.textContent = labels[state] || state;
+    el.title = detail || el.textContent;
+    el.dataset.state = state;
   },
-
-  /* Push all local data to cloud (call after login) */
+  _enqueue(op, data) {
+    const queue = this._loadQueue();
+    const type = op.replace(/^(add|upd|del)/, '');
+    const id = data.id;
+    const previous = queue.findIndex(item => item.type === type && item.data.id === id);
+    const previousItem = previous !== -1 ? queue[previous] : null;
+    if (previous !== -1) queue.splice(previous, 1);
+    // Hapus setelah item baru belum pernah tersinkron tidak perlu dikirim ke cloud.
+    if (!(op.startsWith('del') && previousItem?.op.startsWith('add'))) {
+      queue.push({ op, type, data, queuedAt: new Date().toISOString() });
+    }
+    this._saveQueue(queue);
+    this._setSyncState('pending', `${queue.length} perubahan belum tersinkron`);
+  },
+  _cloudPush(op, data) {
+    if (!DB.isCloud() || !Auth.getUser()) return;
+    this._enqueue(op, data);
+    this.flushCloudQueue();
+  },
+  async _executeCloudOp(op, data) {
+    try {
+      if (op === 'addReq') return await DB.addRequest(data);
+      if (op === 'updReq') return await DB.updateRequest(data.id, data);
+      if (op === 'delReq') return await DB.deleteRequest(data.id);
+      if (op === 'addTask') return await DB.addTask(data);
+      if (op === 'updTask') return await DB.updateTask(data.id, data);
+      if (op === 'delTask') return await DB.deleteTask(data.id);
+      if (op === 'addEst') return await DB.addEstimate(data);
+      if (op === 'updEst') return await DB.updateEstimate(data.id, data);
+      if (op === 'delEst') return await DB.deleteEstimate(data.id);
+      if (op === 'addWbs') return await DB.addWbsItem(data);
+      if (op === 'updWbs') return await DB.updateWbsItem(data.id, data);
+      if (op === 'delWbs') return await DB.deleteWbsItem(data.id);
+    } catch (e) {
+      // Data lama mungkin sudah ada di cloud tetapi belum pernah tercatat di antrean.
+      // Ubah insert konflik menjadi update agar antrean tidak macet selamanya.
+      if (op.startsWith('add') && e.code === '23505') {
+        return this._executeCloudOp(op.replace('add', 'upd'), data);
+      }
+      throw e;
+    }
+  },
+  async flushCloudQueue() {
+    if (this._syncing || !DB.isCloud() || !Auth.getUser()) return;
+    const queue = this._loadQueue();
+    if (!queue.length) { this._setSyncState('synced'); return; }
+    this._syncing = true;
+    this._setSyncState('syncing');
+    try {
+      while (this._loadQueue().length) {
+        const item = this._loadQueue()[0];
+        await this._executeCloudOp(item.op, item.data);
+        const remaining = this._loadQueue();
+        const completedIndex = remaining.findIndex(q => q.queuedAt === item.queuedAt && q.op === item.op && q.data.id === item.data.id);
+        if (completedIndex !== -1) remaining.splice(completedIndex, 1);
+        this._saveQueue(remaining);
+      }
+      this._setSyncState('synced');
+    } catch (e) {
+      console.warn('Cloud sync error:', e.message);
+      this._setSyncState('error', `Perubahan tersimpan di perangkat dan akan dicoba kembali. ${e.message}`);
+      clearTimeout(this._retryTimer);
+      this._retryTimer = setTimeout(() => this.flushCloudQueue(), 15000);
+    } finally { this._syncing = false; }
+  },
+  _mergeByLatest(local, cloud) {
+    const map = new Map(local.map(item => [item.id, item]));
+    cloud.forEach(remote => {
+      const current = map.get(remote.id);
+      const localTime = new Date(current?.updatedAt || current?.createdAt || 0).getTime();
+      const remoteTime = new Date(remote.updatedAt || remote.createdAt || 0).getTime();
+      if (!current || remoteTime >= localTime) map.set(remote.id, remote);
+    });
+    return [...map.values()];
+  },
   async pushLocalToCloud() {
     if (!DB.isCloud() || !Auth.getUser()) return;
-    try {
-      const reqs = this.getRequests();
-      const tasks = this.getTasks();
-      const ests = this.getEstimates();
-      const wbs = this.getWbs();
-      let pushed = 0;
-      for (const r of reqs) { try { await DB.addRequest(r); pushed++; } catch(e) { /* dup ok */ } }
-      for (const t of tasks) { try { await DB.addTask(t); pushed++; } catch(e) { /* dup ok */ } }
-      for (const e of ests) { try { await DB.addEstimate(e); pushed++; } catch(e) { /* dup ok */ } }
-      for (const w of wbs) { try { await DB.addWbsItem(w); pushed++; } catch(e) { /* dup ok */ } }
-      if (pushed) console.log('📤 Pushed', pushed, 'local items to cloud');
-    } catch(e) { console.warn('Push local failed:', e.message); }
+    // Data lama yang belum memiliki antrean tetap dikirim sekali, dengan urutan relasi aman.
+    const queue = this._loadQueue();
+    if (!queue.length) {
+      this.getRequests().forEach(item => this._enqueue('addReq', item));
+      this.getTasks().forEach(item => this._enqueue('addTask', item));
+      this.getEstimates().forEach(item => this._enqueue('addEst', item));
+      this.getWbs().forEach(item => this._enqueue('addWbs', item));
+    }
+    await this.flushCloudQueue();
   },
-
-  /* Pull all cloud data into localStorage */
   async syncFromCloud() {
-    if (!DB.isCloud()) return;
+    if (!DB.isCloud() || !Auth.getUser()) return;
     try {
-      const [reqs, tasks, ests, wbs] = await Promise.all([
-        DB.getRequests(), DB.getTasks(), DB.getEstimates(), DB.getWbs()
-      ]);
-      // Merge: cloud wins for existing, keep local non-conflicting
-      if (reqs.length) this.saveRequests(reqs);
-      if (tasks.length) {
-        this.saveTasks(tasks);
-        // Seed custom locations from cloud tasks so the autocomplete list grows
-        // on any browser that syncs (adaptive location memory)
-        tasks.forEach(t => { if (t.location) Utils.addLocation(t.location); });
-      }
-      if (ests.length) this.saveEstimates(ests);
-      if (wbs.length) this.saveWbs(wbs);
-      console.log('📥 Synced from cloud:', reqs.length, 'reqs,', tasks.length, 'tasks,', ests.length, 'estimates');
-    } catch(e) { console.warn('Cloud sync failed:', e.message); }
+      const [reqs, tasks, ests, wbs] = await Promise.all([DB.getRequests(), DB.getTasks(), DB.getEstimates(), DB.getWbs()]);
+      this.saveRequests(this._mergeByLatest(this.getRequests(), reqs));
+      const mergedTasks = this._mergeByLatest(this.getTasks(), tasks);
+      this.saveTasks(mergedTasks);
+      mergedTasks.forEach(t => { if (t.location) Utils.addLocation(t.location); });
+      this.saveEstimates(this._mergeByLatest(this.getEstimates(), ests));
+      this.saveWbs(this._mergeByLatest(this.getWbs(), wbs));
+      if (!this._loadQueue().length) this._setSyncState('synced');
+      console.log('📥 Data cloud berhasil digabungkan.');
+    } catch(e) {
+      console.warn('Cloud sync failed:', e.message);
+      this._setSyncState('error', 'Tidak dapat mengambil data cloud.');
+    }
   },
 
   /* Realtime: listen for changes from other users */
@@ -194,8 +255,14 @@ const Storage = {
     }
   },
   deleteRequest(id) {
+    const taskIds = this.getTasks().filter(t => t.requestId === id).map(t => t.id);
+    const estimates = this.getEstimates();
+    const wbs = this.getWbs();
     this.saveRequests(this.getRequests().filter(r => r.id !== id));
     this.saveTasks(this.getTasks().filter(t => t.requestId !== id));
+    this.saveEstimates(estimates.filter(e => !taskIds.includes(e.taskId)));
+    this.saveWbs(wbs.filter(w => !taskIds.includes(w.taskId)));
+    // FK cascade di database menangani children; hapus lokal dilakukan eksplisit agar tidak ada data yatim.
     this._cloudPush('delReq', { id });
   },
 
@@ -236,7 +303,12 @@ const Storage = {
     }
     return null;
   },
-  deleteTask(id) { this.saveTasks(this.getTasks().filter(t => t.id !== id)); this._cloudPush('delTask', { id }); },
+  deleteTask(id) {
+    this.saveTasks(this.getTasks().filter(t => t.id !== id));
+    this.saveEstimates(this.getEstimates().filter(e => e.taskId !== id));
+    this.saveWbs(this.getWbs().filter(w => w.taskId !== id));
+    this._cloudPush('delTask', { id });
+  },
   autoPrioritize() {
     const tasks = this.getTasks();
     const today = Utils.todayStr();

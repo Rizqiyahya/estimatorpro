@@ -79,6 +79,7 @@ CREATE TABLE public.tasks (
   priority TEXT NOT NULL DEFAULT 'Normal' CHECK (priority IN ('High', 'Normal')),
   pipeline_status TEXT NOT NULL DEFAULT 'todo' CHECK (pipeline_status IN ('todo', 'in_progress', 'review', 'done', 'revisi')),
   boq_link TEXT NOT NULL DEFAULT '',
+  category TEXT NOT NULL DEFAULT '' CHECK (category IN ('', 'boq', 'planning', 'sto')),
   pipeline_history JSONB NOT NULL DEFAULT '[]',
   created_by UUID REFERENCES public.profiles(id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -99,7 +100,8 @@ CREATE TABLE public.estimates (
   total_price NUMERIC DEFAULT NULL,
   notes TEXT NOT NULL DEFAULT '',
   created_by UUID REFERENCES public.profiles(id),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- ============================================================
@@ -117,7 +119,8 @@ CREATE TABLE public.wbs (
   duration_days INT,
   seq INT NOT NULL DEFAULT 0,
   created_by UUID REFERENCES public.profiles(id),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- Performance index for frequently-queried foreign key
@@ -126,10 +129,10 @@ CREATE INDEX idx_wbs_parent_id ON public.wbs(parent_id);
 
 -- RLS: Estimator full access, Manager read-only
 ALTER TABLE public.wbs ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Estimator full access" ON public.wbs FOR ALL USING (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'estimator')
-);
-CREATE POLICY "Manager read only" ON public.wbs FOR SELECT USING (
+CREATE POLICY "Estimator full access" ON public.wbs FOR ALL TO authenticated
+  USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'estimator'))
+  WITH CHECK (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'estimator'));
+CREATE POLICY "Manager read only" ON public.wbs FOR SELECT TO authenticated USING (
   EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'manager')
 );
 
@@ -147,39 +150,57 @@ CREATE INDEX idx_tasks_pipeline_status ON public.tasks(pipeline_status);
 CREATE INDEX idx_tasks_created_by ON public.tasks(created_by);
 CREATE INDEX idx_estimates_task_id ON public.estimates(task_id);
 
+-- Menjaga waktu perubahan untuk mekanisme merge offline/cloud.
+CREATE OR REPLACE FUNCTION public.update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_requests_updated_at BEFORE UPDATE ON public.requests
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+CREATE TRIGGER update_tasks_updated_at BEFORE UPDATE ON public.tasks
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+CREATE TRIGGER update_estimates_updated_at BEFORE UPDATE ON public.estimates
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+CREATE TRIGGER update_wbs_updated_at BEFORE UPDATE ON public.wbs
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
 -- ============================================================
 -- ROW LEVEL SECURITY
 -- ============================================================
 
 -- Profiles
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can read all profiles" ON public.profiles FOR SELECT USING (true);
-CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Users can read all profiles" ON public.profiles FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE TO authenticated USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
 
 -- Requests
 ALTER TABLE public.requests ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Estimator full access" ON public.requests FOR ALL USING (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'estimator')
-);
-CREATE POLICY "Manager read only" ON public.requests FOR SELECT USING (
+CREATE POLICY "Estimator full access" ON public.requests FOR ALL TO authenticated
+  USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'estimator'))
+  WITH CHECK (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'estimator'));
+CREATE POLICY "Manager read only" ON public.requests FOR SELECT TO authenticated USING (
   EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'manager')
 );
 
 -- Tasks
 ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Estimator full access" ON public.tasks FOR ALL USING (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'estimator')
-);
-CREATE POLICY "Manager read only" ON public.tasks FOR SELECT USING (
+CREATE POLICY "Estimator full access" ON public.tasks FOR ALL TO authenticated
+  USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'estimator'))
+  WITH CHECK (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'estimator'));
+CREATE POLICY "Manager read only" ON public.tasks FOR SELECT TO authenticated USING (
   EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'manager')
 );
 
 -- Estimates
 ALTER TABLE public.estimates ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Estimator full access" ON public.estimates FOR ALL USING (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'estimator')
-);
-CREATE POLICY "Manager read only" ON public.estimates FOR SELECT USING (
+CREATE POLICY "Estimator full access" ON public.estimates FOR ALL TO authenticated
+  USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'estimator'))
+  WITH CHECK (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'estimator'));
+CREATE POLICY "Manager read only" ON public.estimates FOR SELECT TO authenticated USING (
   EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'manager')
 );
 
@@ -193,5 +214,28 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.requests;
 -- MIGRATION: Run this if you already have the tables created
 -- (adds pipeline_history and category columns)
 -- ============================================================
--- ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS pipeline_history JSONB NOT NULL DEFAULT '[]';
--- ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS pipeline_history JSONB NOT NULL DEFAULT '[]';
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.estimates ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+ALTER TABLE public.wbs ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
+-- Jalankan bagian trigger ini juga pada project yang tabelnya sudah ada sebelum
+-- schema versi ini diterapkan.
+DROP TRIGGER IF EXISTS update_requests_updated_at ON public.requests;
+CREATE TRIGGER update_requests_updated_at BEFORE UPDATE ON public.requests
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+DROP TRIGGER IF EXISTS update_tasks_updated_at ON public.tasks;
+CREATE TRIGGER update_tasks_updated_at BEFORE UPDATE ON public.tasks
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+DROP TRIGGER IF EXISTS update_estimates_updated_at ON public.estimates;
+CREATE TRIGGER update_estimates_updated_at BEFORE UPDATE ON public.estimates
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+DROP TRIGGER IF EXISTS update_wbs_updated_at ON public.wbs;
+CREATE TRIGGER update_wbs_updated_at BEFORE UPDATE ON public.wbs
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+-- Jika category pernah dibuat tanpa constraint, jalankan bagian berikut setelah
+-- menormalisasi data kategori lama menjadi boq/planning/sto atau string kosong.
+-- ALTER TABLE public.tasks DROP CONSTRAINT IF EXISTS tasks_category_check;
+-- ALTER TABLE public.tasks ADD CONSTRAINT tasks_category_check
+--   CHECK (category IN ('', 'boq', 'planning', 'sto'));

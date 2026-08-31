@@ -49,12 +49,14 @@ const DB = {
   /* ---- Requests ---- */
   async getRequests() {
     if (this._mode === 'local') return Storage.getRequests();
-    const { data } = await this._supabase.from('requests').select('*').order('created_at', { ascending: false });
+    const { data, error } = await this._supabase.from('requests').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
     return (data || []).map(r => ({
       ...r,
       scopePL: r.scope_pl, scopePS: r.scope_ps, scopeMS: r.scope_ms,
       emailBy: r.email_by, requestBy: r.request_by, endUser: r.end_user,
-      noId: r.no_id
+      noId: r.no_id,
+      createdAt: r.created_at, updatedAt: r.updated_at
     }));
   },
 
@@ -97,20 +99,23 @@ const DB = {
     if (u.scopeMS !== undefined) row.scope_ms = u.scopeMS;
     if (u.note !== undefined) row.note = u.note;
     if (u.status !== undefined) row.status = u.status;
-    const { data } = await this._supabase.from('requests').update(row).eq('id', id).select().single();
+    const { data, error } = await this._supabase.from('requests').update(row).eq('id', id).select().single();
+    if (error) throw error;
     return data;
   },
 
   async deleteRequest(id) {
     if (this._mode === 'local') return Storage.deleteRequest(id);
-    await this._supabase.from('tasks').delete().eq('request_id', id);
-    await this._supabase.from('requests').delete().eq('id', id);
+    // Foreign key ON DELETE CASCADE membersihkan tasks, estimates, dan wbs secara atomik.
+    const { error } = await this._supabase.from('requests').delete().eq('id', id);
+    if (error) throw error;
   },
 
   /* ---- Tasks ---- */
   async getTasks() {
     if (this._mode === 'local') return Storage.getTasks();
-    const { data } = await this._supabase.from('tasks').select('*').order('created_at', { ascending: false });
+    const { data, error } = await this._supabase.from('tasks').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
     return (data || []).map(t => ({
       ...t,
       requestId: t.request_id,
@@ -122,7 +127,8 @@ const DB = {
       pipelineStatus: t.pipeline_status,
       category: t.category,
       pipelineHistory: t.pipeline_history,
-      boqLink: t.boq_link, category: t.category
+      boqLink: t.boq_link,
+      createdAt: t.created_at, updatedAt: t.updated_at
     }));
   },
 
@@ -148,7 +154,8 @@ const DB = {
       pipeline_history: t.pipelineHistory || [],
       created_by: await this._getUserId()
     };
-    const { data } = await this._supabase.from('tasks').insert(row).select().single();
+    const { data, error } = await this._supabase.from('tasks').insert(row).select().single();
+    if (error) throw error;
     return { ...data, requestId: data.request_id, subjectRequest: data.subject_request, subjectTask: data.subject_task, requestBy: data.request_by, endUser: data.end_user, scopePL: data.scope_pl, scopePS: data.scope_ps, scopeMS: data.scope_ms, pipelineStatus: data.pipeline_status, boqLink: data.boq_link, category: data.category, pipelineHistory: data.pipeline_history };
   },
 
@@ -164,15 +171,17 @@ const DB = {
       if (map[k]) row[map[k]] = v;
       else if (['date', 'customer', 'location', 'priority'].includes(k)) row[k] = v;
     }
-    await this._supabase.from('tasks').update(row).eq('id', id);
-    return u;
+    const { data, error } = await this._supabase.from('tasks').update(row).eq('id', id).select().single();
+    if (error) throw error;
+    return { ...data, requestId: data.request_id, subjectRequest: data.subject_request, subjectTask: data.subject_task, requestBy: data.request_by, endUser: data.end_user, scopePL: data.scope_pl, scopePS: data.scope_ps, scopeMS: data.scope_ms, pipelineStatus: data.pipeline_status, boqLink: data.boq_link, category: data.category, pipelineHistory: data.pipeline_history };
   },
 
   async deleteTask(id) {
     if (this._mode === 'local') return Storage.deleteTask(id);
     await this._supabase.from('estimates').delete().eq('task_id', id);
     await this._supabase.from('wbs').delete().eq('task_id', id);
-    await this._supabase.from('tasks').delete().eq('id', id);
+    const { error } = await this._supabase.from('tasks').delete().eq('id', id);
+    if (error) throw error;
   },
 
   async getTasksByRequest(rid) {
@@ -189,9 +198,11 @@ const DB = {
   /* ---- Estimates ---- */
   async getEstimates() {
     if (this._mode === 'local') return Storage.getEstimates();
-    const { data } = await this._supabase.from('estimates').select('*');
+    const { data, error } = await this._supabase.from('estimates').select('*');
+    if (error) throw error;
     return (data || []).map(e => ({
-      ...e, taskId: e.task_id, unitPrice: e.unit_price, totalPrice: e.total_price
+      ...e, taskId: e.task_id, unitPrice: e.unit_price, totalPrice: e.total_price,
+      createdAt: e.created_at, updatedAt: e.updated_at || e.created_at
     }));
   },
 
@@ -210,7 +221,7 @@ const DB = {
 
   async updateEstimate(id, u) {
     if (this._mode === 'local') return Storage.updateEstimate(id, u);
-    const row = {};
+    const row = { updated_at: new Date().toISOString() };
     const map = { taskId: 'task_id', unitPrice: 'unit_price', totalPrice: 'total_price' };
     for (const [k, v] of Object.entries(u)) {
       if (map[k]) row[map[k]] = v;
@@ -229,16 +240,19 @@ const DB = {
     if (this._mode === 'local') return Storage.getEstimatesByTask(tid);
     const { data } = await this._supabase.from('estimates').select('*').eq('task_id', tid);
     return (data || []).map(e => ({
-      ...e, taskId: e.task_id, unitPrice: e.unit_price, totalPrice: e.total_price
+      ...e, taskId: e.task_id, unitPrice: e.unit_price, totalPrice: e.total_price,
+      createdAt: e.created_at, updatedAt: e.updated_at || e.created_at
     }));
   },
 
   /* ---- WBS (Work Breakdown Structure) ---- */
   async getWbs() {
     if (this._mode === 'local') return Storage.getWbs();
-    const { data } = await this._supabase.from('wbs').select('*').order('seq', { ascending: true });
+    const { data, error } = await this._supabase.from('wbs').select('*').order('seq', { ascending: true });
+    if (error) throw error;
     return (data || []).map(w => ({
-      ...w, taskId: w.task_id, parentId: w.parent_id, startDate: w.start_date, durationDays: w.duration_days
+      ...w, taskId: w.task_id, parentId: w.parent_id, startDate: w.start_date, durationDays: w.duration_days,
+      createdAt: w.created_at, updatedAt: w.updated_at || w.created_at
     }));
   },
 
@@ -256,7 +270,7 @@ const DB = {
 
   async updateWbsItem(id, u) {
     if (this._mode === 'local') return Storage.updateWbsItem(id, u);
-    const row = {};
+    const row = { updated_at: new Date().toISOString() };
     const map = { taskId: 'task_id', parentId: 'parent_id', startDate: 'start_date', durationDays: 'duration_days' };
     for (const [k, v] of Object.entries(u)) {
       if (map[k]) row[map[k]] = v;
@@ -275,7 +289,8 @@ const DB = {
     if (this._mode === 'local') return Storage.getWbsByTask(tid);
     const { data } = await this._supabase.from('wbs').select('*').eq('task_id', tid).order('seq', { ascending: true });
     return (data || []).map(w => ({
-      ...w, taskId: w.task_id, parentId: w.parent_id, startDate: w.start_date, durationDays: w.duration_days
+      ...w, taskId: w.task_id, parentId: w.parent_id, startDate: w.start_date, durationDays: w.duration_days,
+      createdAt: w.created_at, updatedAt: w.updated_at || w.created_at
     }));
   },
 

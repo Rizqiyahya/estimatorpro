@@ -58,6 +58,7 @@ const Auth = {
     await Storage.pushLocalToCloud();
     await Storage.syncFromCloud();
     Storage.listenToCloud();
+    Storage.flushCloudQueue();
     App.hideLoginGate();
     Utils.showToast('Welcome, ' + data.user.email.split('@')[0], 'success');
     App.renderView();
@@ -90,6 +91,7 @@ const Auth = {
       await Storage.pushLocalToCloud();
       await Storage.syncFromCloud();
       Storage.listenToCloud();
+      Storage.flushCloudQueue();
       App.hideLoginGate();
       Utils.showToast('Welcome, ' + data.user.email.split('@')[0], 'success');
       App.renderView();
@@ -185,6 +187,7 @@ const Auth = {
     await Storage.pushLocalToCloud();
     await Storage.syncFromCloud();
     Storage.listenToCloud();
+    Storage.flushCloudQueue();
     App.closeModal();
     Utils.showToast('Signed in as ' + data.user.email, 'success');
     App.renderView(); // Refresh everything
@@ -216,6 +219,7 @@ const Auth = {
       await Storage.pushLocalToCloud();
       await Storage.syncFromCloud();
       Storage.listenToCloud();
+      Storage.flushCloudQueue();
       App.closeModal();
       Utils.showToast('Account created! Welcome, ' + data.user.email, 'success');
       App.renderView();

@@ -42,6 +42,14 @@
 .wbs-present-footer { display:flex; justify-content:space-between; margin-top:22px; padding-top:9px; border-top:1px solid var(--border); color:var(--text-muted); font-size:9px; }
 @media (max-width:800px) { .wbs-present-hero{display:block}.wbs-present-summary{margin-top:16px;justify-content:start}.wbs-present-grid{grid-template-columns:1fr} }
 
+/* Indikator cloud sync */
+.sync-status{display:inline-flex;align-items:center;gap:4px;margin-top:2px;font-size:.6rem;color:var(--text-muted)}
+.sync-status::before{content:'';width:6px;height:6px;border-radius:50%;background:#6b7280}
+.sync-status[data-state="syncing"]::before,.sync-status[data-state="pending"]::before{background:var(--orange)}
+.sync-status[data-state="synced"]::before{background:var(--green)}
+.sync-status[data-state="error"]{color:var(--red)}
+.sync-status[data-state="error"]::before{background:var(--red)}
+
 /* ============================================================
    LOGIN GATE
    ============================================================ */
