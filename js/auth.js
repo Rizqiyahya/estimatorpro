@@ -55,8 +55,9 @@ const Auth = {
     }
 
     this._user = data.user;
-    await Storage.pushLocalToCloud();
+    // Ambil cloud lebih dahulu agar cache lama tidak dikirim ulang sebagai data baru.
     await Storage.syncFromCloud();
+    await Storage.pushLocalToCloud();
     Storage.listenToCloud();
     Storage.flushCloudQueue();
     App.hideLoginGate();
@@ -88,8 +89,8 @@ const Auth = {
 
     if (data.user && data.session) {
       this._user = data.user;
-      await Storage.pushLocalToCloud();
       await Storage.syncFromCloud();
+      await Storage.pushLocalToCloud();
       Storage.listenToCloud();
       Storage.flushCloudQueue();
       App.hideLoginGate();
@@ -184,8 +185,9 @@ const Auth = {
 
     this._user = data.user;
     // Sync: push any local data to cloud, then pull latest from cloud
-    await Storage.pushLocalToCloud();
+    // Ambil cloud lebih dahulu agar cache lama tidak dikirim ulang sebagai data baru.
     await Storage.syncFromCloud();
+    await Storage.pushLocalToCloud();
     Storage.listenToCloud();
     Storage.flushCloudQueue();
     App.closeModal();

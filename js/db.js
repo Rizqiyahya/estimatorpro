@@ -79,7 +79,8 @@ const DB = {
       status: r.status || 'open',
       created_by: await this._getUserId()
     };
-    const { data, error } = await this._supabase.from('requests').insert(row).select().single();
+    // Upsert menjaga proses bootstrap dari cache lokal tetap aman bila ID telah ada.
+    const { data, error } = await this._supabase.from('requests').upsert(row, { onConflict: 'id' }).select().single();
     if (error) throw error;
     return { ...data, scopePL: data.scope_pl, scopePS: data.scope_ps, scopeMS: data.scope_ms, emailBy: data.email_by, requestBy: data.request_by, endUser: data.end_user, noId: data.no_id };
   },
@@ -154,7 +155,8 @@ const DB = {
       pipeline_history: t.pipelineHistory || [],
       created_by: await this._getUserId()
     };
-    const { data, error } = await this._supabase.from('tasks').insert(row).select().single();
+    // Upsert menjaga proses bootstrap dari cache lokal tetap aman bila ID telah ada.
+    const { data, error } = await this._supabase.from('tasks').upsert(row, { onConflict: 'id' }).select().single();
     if (error) throw error;
     return { ...data, requestId: data.request_id, subjectRequest: data.subject_request, subjectTask: data.subject_task, requestBy: data.request_by, endUser: data.end_user, scopePL: data.scope_pl, scopePS: data.scope_ps, scopeMS: data.scope_ms, pipelineStatus: data.pipeline_status, boqLink: data.boq_link, category: data.category, pipelineHistory: data.pipeline_history };
   },
@@ -215,7 +217,8 @@ const DB = {
       unit_price: e.unitPrice || null, total_price: e.totalPrice || null,
       notes: e.notes || '', created_by: await this._getUserId()
     };
-    const { data, error } = await this._supabase.from('estimates').insert(row).select().single();
+    // Upsert berdasarkan ID membuat pengiriman ulang antrean offline idempoten.
+    const { data, error } = await this._supabase.from('estimates').upsert(row, { onConflict: 'id' }).select().single();
     if (error) throw error;
     return { ...data, taskId: data.task_id, unitPrice: data.unit_price, totalPrice: data.total_price };
   },
@@ -268,7 +271,8 @@ const DB = {
       name: w.name || '', start_date: w.startDate || null, duration_days: w.durationDays || null,
       seq: w.seq || 0, created_by: await this._getUserId()
     };
-    const { data, error } = await this._supabase.from('wbs').insert(row).select().single();
+    // Upsert berdasarkan ID membuat pengiriman ulang antrean offline idempoten.
+    const { data, error } = await this._supabase.from('wbs').upsert(row, { onConflict: 'id' }).select().single();
     if (error) throw error;
     return { ...data, taskId: data.task_id, parentId: data.parent_id, startDate: data.start_date, durationDays: data.duration_days };
   },

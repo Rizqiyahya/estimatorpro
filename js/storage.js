@@ -152,13 +152,22 @@ const Storage = {
   },
   async pushLocalToCloud() {
     if (!DB.isCloud() || !Auth.getUser()) return;
-    // Data lama yang belum memiliki antrean tetap dikirim sekali, dengan urutan relasi aman.
+    // Hanya kirim item yang belum ada di cloud. Sebelumnya seluruh cache lokal
+    // dikirim setiap login dan menghasilkan konflik ID berulang pada estimate/WBS.
     const queue = this._loadQueue();
     if (!queue.length) {
-      this.getRequests().forEach(item => this._enqueue('addReq', item));
-      this.getTasks().forEach(item => this._enqueue('addTask', item));
-      this.getEstimates().forEach(item => this._enqueue('addEst', item));
-      this.getWbs().forEach(item => this._enqueue('addWbs', item));
+      const [cloudReqs, cloudTasks, cloudEsts, cloudWbs] = await Promise.all([
+        DB.getRequests(), DB.getTasks(), DB.getEstimates(), DB.getWbs()
+      ]);
+      const addMissing = (op, local, cloud) => {
+        const cloudIds = new Set(cloud.map(item => item.id));
+        local.filter(item => !cloudIds.has(item.id)).forEach(item => this._enqueue(op, item));
+      };
+      // Urutan menjaga parent tersedia sebelum child dikirim.
+      addMissing('addReq', this.getRequests(), cloudReqs);
+      addMissing('addTask', this.getTasks(), cloudTasks);
+      addMissing('addEst', this.getEstimates(), cloudEsts);
+      addMissing('addWbs', this.getWbs(), cloudWbs);
     }
     await this.flushCloudQueue();
   },
