@@ -61,6 +61,7 @@ const Auth = {
     Storage.listenToCloud();
     Storage.flushCloudQueue();
     App.hideLoginGate();
+    if (window.Presence) Presence.start(data.user);
     Utils.showToast('Welcome, ' + data.user.email.split('@')[0], 'success');
     App.renderView();
     App.setActiveNav();
@@ -191,6 +192,7 @@ const Auth = {
     Storage.listenToCloud();
     Storage.flushCloudQueue();
     App.closeModal();
+    if (window.Presence) Presence.start(data.user);
     Utils.showToast('Signed in as ' + data.user.email, 'success');
     App.renderView(); // Refresh everything
     App.setActiveNav();
@@ -223,6 +225,7 @@ const Auth = {
       Storage.listenToCloud();
       Storage.flushCloudQueue();
       App.closeModal();
+      if (window.Presence) Presence.start(data.user);
       Utils.showToast('Account created! Welcome, ' + data.user.email, 'success');
       App.renderView();
       App.setActiveNav();
@@ -234,6 +237,7 @@ const Auth = {
 
   async logout() {
     if (!DB.isCloud()) return;
+    if (window.Presence) Presence.stop();
     await DB._supabase.auth.signOut();
     this._user = null;
     App.showLoginGate();

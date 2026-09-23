@@ -26,12 +26,19 @@ const App = {
     if (DB.isCloud() && Auth.getUser()) {
       await Storage.syncFromCloud();
       Storage.listenToCloud();
+      if (window.Presence) Presence.start(Auth.getUser());
     }
     // Auto-set High priority for tasks past their target date
     Storage.autoPrioritize();
 
     // Bind login gate events
     Auth.bindLoginGate();
+
+    document.getElementById('presenceButton').addEventListener('click', (event) => {
+      event.stopPropagation();
+      Presence.toggle();
+    });
+    document.addEventListener('click', () => Presence.close());
 
     document.getElementById('themeToggle').addEventListener('click', () => {
       const cur = document.documentElement.getAttribute('data-theme');

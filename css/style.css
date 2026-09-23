@@ -42,6 +42,26 @@
 .wbs-present-footer { display:flex; justify-content:space-between; margin-top:22px; padding-top:9px; border-top:1px solid var(--border); color:var(--text-muted); font-size:9px; }
 @media (max-width:800px) { .wbs-present-hero{display:block}.wbs-present-summary{margin-top:16px;justify-content:start}.wbs-present-grid{grid-template-columns:1fr} }
 
+/* Online presence */
+.presence-wrap { position:relative; }
+.presence-button { display:flex; align-items:center; gap:7px; min-height:34px; padding:4px 9px; border:1px solid var(--border); border-radius:9px; background:var(--bg-card); color:var(--text-primary); cursor:pointer; font:inherit; font-size:.76rem; font-weight:600; transition:border-color .15s, background .15s; }
+.presence-button:hover, .presence-button[aria-expanded="true"] { border-color:var(--accent); background:var(--bg-hover); }
+.presence-indicator { width:7px; height:7px; flex:0 0 7px; border-radius:50%; background:#22c55e; box-shadow:0 0 0 3px rgba(34,197,94,.15); }
+.presence-avatars { display:flex; align-items:center; padding-left:2px; }
+.presence-avatar { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; margin-left:-5px; border:2px solid var(--bg-card); border-radius:50%; color:#fff; font-size:.57rem; font-weight:700; line-height:1; }
+.presence-avatar:first-child { margin-left:0; }
+.presence-extra { background:var(--text-muted); font-size:.55rem; }
+.presence-count { white-space:nowrap; }
+.presence-popover { display:none; position:absolute; z-index:100; top:calc(100% + 8px); right:0; width:230px; max-height:300px; overflow-y:auto; padding:8px; border:1px solid var(--border); border-radius:10px; background:var(--bg-card); box-shadow:0 12px 30px rgba(0,0,0,.2); }
+.presence-popover.is-open { display:block; }
+.presence-popover-title { padding:5px 6px 9px; border-bottom:1px solid var(--border); color:var(--text-primary); font-size:.78rem; font-weight:700; }
+.presence-user { display:flex; align-items:center; gap:9px; padding:9px 6px 5px; }
+.presence-avatar-large { width:29px; height:29px; margin:0; border:0; font-size:.66rem; }
+.presence-user-details { min-width:0; }
+.presence-user-name { overflow:hidden; color:var(--text-primary); font-size:.79rem; font-weight:600; text-overflow:ellipsis; white-space:nowrap; }
+.presence-user-status { display:flex; align-items:center; gap:5px; margin-top:2px; color:#22c55e; font-size:.68rem; }
+.presence-user-status::before { content:''; width:5px; height:5px; border-radius:50%; background:currentColor; }
+
 /* Indikator cloud sync */
 .sync-status{display:inline-flex;align-items:center;gap:4px;margin-top:2px;font-size:.6rem;color:var(--text-muted)}
 .sync-status::before{content:'';width:6px;height:6px;border-radius:50%;background:#6b7280}
