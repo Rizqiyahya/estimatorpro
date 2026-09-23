@@ -95,6 +95,7 @@ const Auth = {
       Storage.listenToCloud();
       Storage.flushCloudQueue();
       App.hideLoginGate();
+      if (window.Presence) Presence.start(data.user);
       Utils.showToast('Welcome, ' + data.user.email.split('@')[0], 'success');
       App.renderView();
       App.setActiveNav();

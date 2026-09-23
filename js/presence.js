@@ -7,18 +7,23 @@
 const Presence = {
   _channel: null,
   _users: [],
+  _userId: null,
 
   start(user) {
-    this.stop();
     if (!DB.isCloud() || !user || !DB._supabase) {
-      this.render();
+      this.stop();
       return;
     }
+    // Do not recreate an active channel for the same session. Recreating it
+    // during initial page setup could cancel the just-started subscription.
+    if (this._channel && this._userId === user.id) return;
+    this.stop();
 
     const name = (user.user_metadata && user.user_metadata.name || '').trim()
       || (user.email || 'User').split('@')[0];
     const email = user.email || '';
     const channelName = 'estimatorpro-online-users';
+    this._userId = user.id;
 
     try {
       this._channel = DB._supabase.channel(channelName, {
@@ -27,17 +32,18 @@ const Presence = {
       this._channel
         .on('presence', { event: 'sync' }, () => this._sync())
         .subscribe(async (status) => {
-          if (status !== 'SUBSCRIBED') return;
-          const { error } = await this._channel.track({
+          if (status !== 'SUBSCRIBED' || !this._channel) return;
+          const result = await this._channel.track({
             user_id: user.id,
             name,
             email,
             online_at: new Date().toISOString()
           });
-          if (error) console.warn('Presence tracking failed:', error.message);
+          if (result !== 'ok') console.warn('Presence tracking failed:', result);
         });
     } catch (error) {
       console.warn('Presence unavailable:', error.message);
+      this.stop();
     }
   },
 
@@ -56,11 +62,12 @@ const Presence = {
   },
 
   stop() {
-    if (this._channel) {
+    if (this._channel && DB._supabase) {
       this._channel.untrack().catch(() => {});
       DB._supabase.removeChannel(this._channel);
     }
     this._channel = null;
+    this._userId = null;
     this._users = [];
     this.render();
   },
