@@ -26,6 +26,10 @@ const Presence = {
     this._member = { user_id: user.id, name, email: user.email || '', online_at: new Date().toISOString() };
     this._userId = user.id;
     this._stopped = false;
+    // A signed-in user is online from the moment their application session
+    // starts. Render this immediately; the realtime channel subsequently
+    // synchronizes other visitors and reconnects if the network is delayed.
+    this._mergeSelf();
     this._connect();
   },
 

@@ -6,7 +6,22 @@ const Auth = {
   async init() {
     if (!DB.isCloud()) return;
     const { data: { session } } = await DB._supabase.auth.getSession();
-    if (session) { this._user = session.user; }
+    if (session) {
+      this._user = session.user;
+      if (window.Presence) Presence.start(session.user);
+    }
+    // Keeps Presence in sync after an expired token is refreshed or when
+    // authentication changes in another tab on the same device.
+    DB._supabase.auth.onAuthStateChange((event, session) => {
+      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
+        this._user = session.user;
+        if (window.Presence) Presence.start(session.user);
+      }
+      if (event === 'SIGNED_OUT') {
+        this._user = null;
+        if (window.Presence) Presence.stop();
+      }
+    });
   },
 
   getUser() { return this._user; },
