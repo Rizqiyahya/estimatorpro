@@ -26,7 +26,7 @@ const App = {
     if (DB.isCloud() && Auth.getUser()) {
       await Storage.syncFromCloud();
       Storage.listenToCloud();
-      if (window.Presence) Presence.start(Auth.getUser());
+      if (window.Presence) window.Presence.start(Auth.getUser());
     }
     // Auto-set High priority for tasks past their target date
     Storage.autoPrioritize();
@@ -36,9 +36,9 @@ const App = {
 
     document.getElementById('presenceButton').addEventListener('click', (event) => {
       event.stopPropagation();
-      Presence.toggle();
+      window.Presence.toggle();
     });
-    document.addEventListener('click', () => Presence.close());
+    document.addEventListener('click', () => window.Presence?.close());
 
     document.getElementById('themeToggle').addEventListener('click', () => {
       const cur = document.documentElement.getAttribute('data-theme');

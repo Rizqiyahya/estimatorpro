@@ -202,3 +202,8 @@ const Presence = {
     if (button) button.setAttribute('aria-expanded', 'false');
   }
 };
+
+// Auth and App use window.Presence because they may run independently of this
+// script's lexical scope. Top-level `const` is not automatically a window
+// property, so expose the service explicitly.
+window.Presence = Presence;

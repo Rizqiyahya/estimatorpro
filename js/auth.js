@@ -8,18 +8,18 @@ const Auth = {
     const { data: { session } } = await DB._supabase.auth.getSession();
     if (session) {
       this._user = session.user;
-      if (window.Presence) Presence.start(session.user);
+      if (window.Presence) window.Presence.start(session.user);
     }
     // Keeps Presence in sync after an expired token is refreshed or when
     // authentication changes in another tab on the same device.
     DB._supabase.auth.onAuthStateChange((event, session) => {
       if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
         this._user = session.user;
-        if (window.Presence) Presence.start(session.user);
+        if (window.Presence) window.Presence.start(session.user);
       }
       if (event === 'SIGNED_OUT') {
         this._user = null;
-        if (window.Presence) Presence.stop();
+        if (window.Presence) window.Presence.stop();
       }
     });
   },
@@ -76,7 +76,7 @@ const Auth = {
     Storage.listenToCloud();
     Storage.flushCloudQueue();
     App.hideLoginGate();
-    if (window.Presence) Presence.start(data.user);
+    if (window.Presence) window.Presence.start(data.user);
     Utils.showToast('Welcome, ' + data.user.email.split('@')[0], 'success');
     App.renderView();
     App.setActiveNav();
@@ -110,7 +110,7 @@ const Auth = {
       Storage.listenToCloud();
       Storage.flushCloudQueue();
       App.hideLoginGate();
-      if (window.Presence) Presence.start(data.user);
+      if (window.Presence) window.Presence.start(data.user);
       Utils.showToast('Welcome, ' + data.user.email.split('@')[0], 'success');
       App.renderView();
       App.setActiveNav();
@@ -208,7 +208,7 @@ const Auth = {
     Storage.listenToCloud();
     Storage.flushCloudQueue();
     App.closeModal();
-    if (window.Presence) Presence.start(data.user);
+    if (window.Presence) window.Presence.start(data.user);
     Utils.showToast('Signed in as ' + data.user.email, 'success');
     App.renderView(); // Refresh everything
     App.setActiveNav();
@@ -241,7 +241,7 @@ const Auth = {
       Storage.listenToCloud();
       Storage.flushCloudQueue();
       App.closeModal();
-      if (window.Presence) Presence.start(data.user);
+      if (window.Presence) window.Presence.start(data.user);
       Utils.showToast('Account created! Welcome, ' + data.user.email, 'success');
       App.renderView();
       App.setActiveNav();
@@ -253,7 +253,7 @@ const Auth = {
 
   async logout() {
     if (!DB.isCloud()) return;
-    if (window.Presence) Presence.stop();
+    if (window.Presence) window.Presence.stop();
     await DB._supabase.auth.signOut();
     this._user = null;
     App.showLoginGate();
