@@ -195,6 +195,14 @@ const Dashboard = {
     return day >= info.start.getTime() && day <= info.end.getTime();
   },
 
+  _statusLabel(status) {
+    return ({ todo: 'To Do', in_progress: 'In Progress', review: 'Review', done: 'Done', revisi: 'Revisi' })[status] || '—';
+  },
+
+  _scopeLabel(task) {
+    return ['PL', 'PS', 'MS'].filter(scope => task[`scope${scope}`]).join(', ') || '—';
+  },
+
   _data() {
     const info = this._periodInfo();
     const requests = Storage.getRequests();
@@ -324,6 +332,121 @@ const Dashboard = {
     if (requestId) setTimeout(() => Tasks?.filterByRequest?.(requestId), 0);
   },
 
+  exportReport() {
+    if (typeof XLSX === 'undefined') {
+      Utils.showToast('Library Excel belum siap. Silakan coba lagi beberapa saat.', 'error');
+      return;
+    }
+    const { info, scopedRequests, tasks } = this._data();
+    const today = this._dateOnly(new Date());
+    const statusItems = [
+      { key: 'todo', label: 'To Do' }, { key: 'in_progress', label: 'In Progress' },
+      { key: 'review', label: 'Review' }, { key: 'done', label: 'Done' }, { key: 'revisi', label: 'Revisi' }
+    ];
+    const doneThisPeriod = tasks.filter(task => this._inRange(this._doneAt(task), info));
+    const overdue = tasks.filter(task => task.targetDate && task.pipelineStatus !== 'done' && new Date(`${task.targetDate}T00:00:00`) < today);
+    const dueInPeriod = tasks.filter(task => task.targetDate && task.pipelineStatus !== 'done' && this._inRange(new Date(`${task.targetDate}T00:00:00`), info));
+    const high = tasks.filter(task => task.priority === 'High' && task.pipelineStatus !== 'done');
+    const revisi = tasks.filter(task => task.pipelineStatus === 'revisi');
+    const taskRows = tasks.slice().sort((a, b) => (a.targetDate || '9999-12-31').localeCompare(b.targetDate || '9999-12-31')).map(task => ({
+      'Request Date': task.request.date || '',
+      'Request / Tender': task.subjectRequest || task.request.subject || '',
+      'Sales PIC': task.sales,
+      'Customer': task.request.customer || '',
+      'End User': task.request.endUser || '',
+      'Division': task.division,
+      'Task': task.subjectTask || '',
+      'Category': task.category || '',
+      'Scope': this._scopeLabel(task),
+      'Priority': task.priority || '',
+      'Pipeline Status': this._statusLabel(task.pipelineStatus),
+      'Target Done': task.targetDate || '',
+      'Done Date': this._doneAt(task) ? this._dateKey(this._doneAt(task)) : '',
+      'Last Updated': task.updatedAt ? this._dateKey(task.updatedAt) : '',
+      'Notes': task.notes || ''
+    }));
+    const reqIdsInTasks = new Set(tasks.map(task => task.requestId));
+    const requestRows = scopedRequests.filter(request => reqIdsInTasks.has(request.id) || !tasks.length).map(request => ({
+      'Request Date': request.date || '',
+      'Request / Tender': request.subject || '',
+      'Sales PIC': request.requestBy || 'Belum diisi',
+      'Customer': request.customer || '',
+      'End User': request.endUser || '',
+      'Division': request.division || '',
+      'Status': request.status || '',
+      'Scope': ['PL', 'PS', 'MS'].filter(scope => request[`scope${scope}`]).join(', ') || '—',
+      'Last Updated': request.updatedAt ? this._dateKey(request.updatedAt) : ''
+    }));
+    const divisionRows = ['NETCO', 'OMG', 'ITSOL'].map(division => {
+      const rows = tasks.filter(task => task.division === division);
+      return { Division: division, 'Total Task': rows.length, Done: rows.filter(task => task.pipelineStatus === 'done').length, Active: rows.filter(task => task.pipelineStatus !== 'done').length, Overdue: rows.filter(task => task.targetDate && task.pipelineStatus !== 'done' && new Date(`${task.targetDate}T00:00:00`) < today).length };
+    });
+    const salesRows = [...new Set(tasks.map(task => task.sales))].sort((a,b) => a.localeCompare(b, 'id')).map(sales => {
+      const rows = tasks.filter(task => task.sales === sales);
+      return { 'Sales PIC': sales, 'Total Task': rows.length, Done: rows.filter(task => task.pipelineStatus === 'done').length, Active: rows.filter(task => task.pipelineStatus !== 'done').length, Overdue: rows.filter(task => task.targetDate && task.pipelineStatus !== 'done' && new Date(`${task.targetDate}T00:00:00`) < today).length };
+    });
+    const pipelineRows = statusItems.map(item => ({ Status: item.label, 'Jumlah Task': tasks.filter(task => task.pipelineStatus === item.key).length }));
+    const attentionRows = [
+      ...overdue.map(task => ({ Jenis: 'Overdue', ...this._exportAttentionTask(task) })),
+      ...dueInPeriod.map(task => ({ Jenis: 'Target dalam periode', ...this._exportAttentionTask(task) })),
+      ...high.map(task => ({ Jenis: 'High Priority', ...this._exportAttentionTask(task) })),
+      ...revisi.map(task => ({ Jenis: 'Revisi', ...this._exportAttentionTask(task) }))
+    ];
+    const summaryRows = [
+      ['EstimatorPro — Interactive Analysis Report'],
+      ['Periode', info.display],
+      ['Filter Divisi', this.division === 'all' ? 'Semua Divisi' : this.division],
+      ['Filter Sales PIC', this.sales === 'all' ? 'Semua Sales' : this.sales],
+      ['Filter Status', this.status === 'all' ? 'Semua Status' : this._statusLabel(this.status)],
+      ['Dibuat pada', new Date().toLocaleString('id-ID')],
+      [],
+      ['KPI', 'Nilai'],
+      ['Tender dalam scope', scopedRequests.length],
+      ['Task dalam scope', tasks.length],
+      ['Done dalam periode', doneThisPeriod.length],
+      ['Task aktif saat ini', tasks.filter(task => task.pipelineStatus !== 'done').length],
+      ['Overdue', overdue.length],
+      ['Target dalam periode', dueInPeriod.length],
+      ['High Priority', high.length],
+      ['Revisi', revisi.length]
+    ];
+    const workbook = XLSX.utils.book_new();
+    const addSheet = (name, rows, json = true) => {
+      const sheet = json ? XLSX.utils.json_to_sheet(rows) : XLSX.utils.aoa_to_sheet(rows);
+      if (json && rows.length) {
+        sheet['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { c: 0, r: 0 }, e: { c: Object.keys(rows[0]).length - 1, r: rows.length } }) };
+        sheet['!freeze'] = { xSplit: 0, ySplit: 1 };
+        sheet['!cols'] = Object.keys(rows[0]).map(key => ({ wch: Math.min(42, Math.max(12, key.length + 2, ...rows.map(row => String(row[key] ?? '').length + 2))) }));
+      } else if (!json) {
+        sheet['!cols'] = [{ wch: 26 }, { wch: 34 }];
+      }
+      XLSX.utils.book_append_sheet(workbook, sheet, name);
+    };
+    addSheet('Summary', summaryRows, false);
+    addSheet('Division Summary', divisionRows);
+    addSheet('Sales PIC Summary', salesRows);
+    addSheet('Pipeline Status', pipelineRows);
+    addSheet('Attention Items', attentionRows);
+    addSheet('Task Detail', taskRows);
+    addSheet('Request Detail', requestRows);
+    const safeStart = info.startKey.replaceAll('-', '');
+    const safeEnd = info.endKey.replaceAll('-', '');
+    XLSX.writeFile(workbook, `EstimatorPro_Report_${safeStart}_to_${safeEnd}.xlsx`);
+    Utils.showToast('Excel report berhasil diunduh.', 'success');
+  },
+
+  _exportAttentionTask(task) {
+    return {
+      'Request / Tender': task.subjectRequest || task.request.subject || '',
+      Task: task.subjectTask || '',
+      Division: task.division,
+      'Sales PIC': task.sales,
+      Status: this._statusLabel(task.pipelineStatus),
+      Priority: task.priority || '',
+      'Target Done': task.targetDate || ''
+    };
+  },
+
   _interactiveRender() {
     const { info, scopedRequests, tasks, salesList } = this._data();
     const today = this._dateOnly(new Date());
@@ -356,7 +479,7 @@ const Dashboard = {
     return `
       <div class="dashboard-analysis-head">
         <div><h2>Interactive Analysis</h2><p>Periode analisis · ${info.display}</p></div>
-        <span class="dashboard-period-badge">${info.label}</span>
+        <div class="dashboard-analysis-actions"><span class="dashboard-period-badge">${info.label}</span><button class="btn btn-primary btn-sm dashboard-export-btn" onclick="Dashboard.exportReport()">⇩ Export Excel Report</button></div>
       </div>
 
       <section class="dashboard-filters card">
