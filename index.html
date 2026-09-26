@@ -79,6 +79,7 @@
       <button class="sidebar-user-logout" id="sidebarLogout" title="Sign out">⏻</button>
     </div>
     <nav class="sidebar-nav">
+      <div class="nav-section-label">Workspace</div>
       <a href="#dashboard" class="nav-item active" data-route="dashboard">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
         <span>Dashboard</span>
@@ -99,17 +100,16 @@
       </a>
     </nav>
     <div class="sidebar-footer">
-      <div id="authArea" style="display:none;padding:6px 8px;margin-bottom:4px">
-        <div style="display:flex;align-items:center;gap:8px">
-          <div style="width:28px;height:28px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:0.75rem" id="userAvatar">?</div>
-          <div style="flex:1;overflow:hidden">
-            <div style="font-size:0.78rem;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="userName">—</div>
-            <div style="font-size:0.65rem;color:var(--text-muted)" id="userRole">—</div>
-            <div id="syncStatus" class="sync-status" data-state="lokal" title="Mode lokal">Mode lokal</div>
-          </div>
-          <button class="btn-xs btn-secondary" onclick="Auth.logout()" title="Sign Out" style="padding:3px 6px;font-size:0.65rem">⏻</button>
+      <div id="authArea" class="account-chip" style="display:none">
+        <div class="account-avatar" id="userAvatar">?</div>
+        <div class="account-copy">
+          <div class="account-name" id="userName">—</div>
+          <div class="account-role" id="userRole">—</div>
+          <div id="syncStatus" class="sync-status" data-state="lokal" title="Mode lokal">Mode lokal</div>
         </div>
+        <button class="account-signout" onclick="Auth.logout()" title="Sign Out" aria-label="Sign Out">⏻</button>
       </div>
+      <div class="nav-section-label nav-section-preferences">Preferences</div>
       <a href="#settings" class="nav-item" data-route="settings">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
         <span>Settings</span>
@@ -130,10 +130,11 @@
   </aside>
 
   <header class="mobile-header">
-    <button id="mobileMenuBtn" class="mobile-menu-btn" aria-label="Menu">
+    <button id="mobileMenuBtn" class="mobile-menu-btn" aria-label="Open navigation menu">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
     </button>
-    <span class="mobile-brand">📐 EstimatorPro</span>
+    <img src="assets/logo-starcom.png" alt="" class="mobile-brand-logo">
+    <span class="mobile-brand">EstimatorPro</span>
   </header>
 
   <main id="mainContent" class="main-content"></main>
