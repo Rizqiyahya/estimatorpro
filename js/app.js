@@ -81,7 +81,10 @@ const App = {
 
   route() {
     const hash = window.location.hash || '#dashboard';
-    this.currentRoute = hash.replace('#', '') || 'dashboard';
+    const requestedRoute = hash.replace('#', '') || 'dashboard';
+    const availableRoutes = ['dashboard', 'requests', 'tasks', 'kanban', 'settings'];
+    this.currentRoute = availableRoutes.includes(requestedRoute) ? requestedRoute : 'dashboard';
+    if (requestedRoute !== this.currentRoute) history.replaceState(null, '', '#dashboard');
     this.setActiveNav();
     this.renderView();
   },
@@ -157,8 +160,7 @@ const App = {
     const main = document.getElementById('mainContent');
     const views = {
       'dashboard': Dashboard, 'requests': Requests, 'tasks': Tasks,
-      'kanban': Kanban, 'estimates': Estimates, 'wbs': Wbs, 'gantt': Gantt,
-      'settings': SettingsView
+      'kanban': Kanban, 'settings': SettingsView
     };
     const View = views[this.currentRoute] || Dashboard;
     // Reset filters when switching views
