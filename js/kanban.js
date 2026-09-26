@@ -244,7 +244,6 @@ const Kanban = {
         ${t.customer?`<div><span style="color:var(--text-muted)">Customer:</span> <span style="color:var(--text-primary)">${Utils.escapeHtml(t.customer)}</span></div>`:''}
         ${t.location?`<div><span style="color:var(--text-muted)">📍 Location:</span> <span style="color:var(--text-primary)">${Utils.escapeHtml(t.location)}</span></div>`:''}
         ${t.targetDate?`<div><span style="color:var(--text-muted)">🎯 Target Done:</span> ${this.targetBadge(t)}</div>`:''}
-        ${t.boqLink?`<div><span style="color:var(--text-muted)">🔗 BoQ:</span> <a href="${Utils.escapeHtml(t.boqLink)}" target="_blank" class="link-btn">Open Drive</a></div>`:''}
       </div>
       <!-- Pipeline Timeline -->
       ${t.pipelineHistory && t.pipelineHistory.length > 1 ? `
@@ -269,7 +268,6 @@ const Kanban = {
       </div>
       ` : ''}
       <div class="modal-footer">
-        ${Utils.toolForCategory(t.category) ? `<button class="btn btn-primary btn-sm" onclick="Tasks.openTool('${t.id}')">🧰 ${Utils.toolLabel(t.category)}</button>` : ''}
         <button class="btn btn-danger btn-sm" onclick="Storage.deleteTask('${t.id}');App.closeModal();Kanban.refresh()">Delete</button>
         <button class="btn btn-secondary" onclick="App.closeModal()">Close</button>
       </div>

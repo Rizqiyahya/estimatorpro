@@ -143,7 +143,7 @@ const Tasks = {
                 <th>No</th>${Utils.sortableTh('Date','date',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Request','subjectRequest',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Subject Task','subjectTask',this.sortKey,this.sortDir,'Tasks')}
                 ${Utils.sortableTh('Sales','requestBy',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Customer','customer',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('End User','endUser',this.sortKey,this.sortDir,'Tasks')}
                 ${Utils.sortableTh('Division','division',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Category','category',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Scope','scope',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Location','location',this.sortKey,this.sortDir,'Tasks')}
-                ${Utils.sortableTh('Priority','priority',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Pipeline','pipelineStatus',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Target','targetDate',this.sortKey,this.sortDir,'Tasks')}<th>🔗 BoQ</th><th></th>
+                ${Utils.sortableTh('Priority','priority',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Pipeline','pipelineStatus',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Target','targetDate',this.sortKey,this.sortDir,'Tasks')}<th></th>
               </tr>
             </thead>
             <tbody id="taskTableBody">
@@ -201,11 +201,7 @@ const Tasks = {
         <td data-label="Priority">${t.priority==='High'?'<span class="badge badge-red">High</span>':'<span class="badge badge-neutral">Normal</span>'}</td>
         <td data-label="Pipeline">${Utils.pipeBadge(t.pipelineStatus)}</td>
         <td data-label="Target">${this.targetBadge(t)}</td>
-        <td data-label="BoQ">
-          ${t.boqLink?`<a href="${Utils.escapeHtml(t.boqLink)}" target="_blank" class="link-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>Open</a>`:'<span style="color:var(--text-muted);font-size:0.72rem">—</span>'}
-        </td>
         <td class="actions" data-label="">
-          ${Utils.toolForCategory(t.category) ? `<button class="btn-icon btn-xs" style="color:var(--accent)" onclick="Tasks.openTool('${t.id}')" title="Buka tool: ${Utils.toolLabel(t.category)}">🧰</button>` : ''}
           <button class="btn-icon btn-xs" onclick="Tasks.openModal('${t.id}')" title="Edit">✏️</button>
           <button class="btn-icon btn-xs" style="color:var(--red)" onclick="Tasks.confirmDelete('${t.id}')" title="Delete">🗑️</button>
         </td>
@@ -363,11 +359,6 @@ const Tasks = {
             <div class="form-hint">Tanggal target penyelesaian (opsional).</div>
           </div>
         </div>
-        <div class="form-group">
-          <label class="form-label">🔗 Link BoQ (Google Drive)</label>
-          <input type="url" class="form-input" name="boqLink" value="${Utils.escapeHtml(task?.boqLink||'')}" placeholder="https://drive.google.com/...">
-          <div class="form-hint">Paste share link untuk akses cepat saat revisi.</div>
-        </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" onclick="App.closeModal()">Cancel</button>
           <button type="submit" class="btn btn-primary">${isEdit?'Save Changes':'Create Task'}</button>
@@ -401,7 +392,7 @@ const Tasks = {
       endUser:f.endUser.value.trim(), scopePL:f.scopePL.checked,
       scopePS:f.scopePS.checked, scopeMS:f.scopeMS.checked,
       location:f.location.value.trim(), priority:f.priority.value,
-      pipelineStatus:f.pipelineStatus.value, boqLink:f.boqLink.value.trim(),
+      pipelineStatus:f.pipelineStatus.value,
       category:f.category.value, targetDate:f.targetDate.value || ''
     };
     if (!d.subjectTask) return Utils.showToast('Subject Task wajib diisi','error');
@@ -431,15 +422,4 @@ const Tasks = {
       </div>`);
   },
 
-  /* Open the tool that matches this task's category */
-  openTool(taskId) {
-    const t = Storage.getTasks().find(x => x.id === taskId);
-    if (!t) return;
-    const route = Utils.toolForCategory(t.category);
-    if (!route) return Utils.showToast('Task ini tidak punya tool terkait','info');
-    if (route === '#wbs') Wbs.openForTask(taskId);
-    else if (route === '#gantt') Gantt.openForTask(taskId);
-    else if (route === '#estimates') Estimates.openForTask(taskId);
-    else App.navigate(route);
-  }
 };
