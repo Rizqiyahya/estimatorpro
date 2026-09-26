@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=7">
+  <link rel="stylesheet" href="css/style.css?v=9">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📐</text></svg>">
 </head>
 <body>
@@ -105,14 +105,33 @@
       </a>
     </nav>
     <div class="sidebar-footer">
-      <div id="authArea" class="account-chip" style="display:none">
-        <div class="account-avatar" id="userAvatar">?</div>
-        <div class="account-copy">
-          <div class="account-name" id="userName">—</div>
-          <div class="account-role" id="userRole">—</div>
-          <div id="syncStatus" class="sync-status" data-state="lokal" title="Mode lokal">Mode lokal</div>
+      <div id="authArea" class="account-wrap" style="display:none">
+        <button id="accountButton" class="account-chip" type="button" aria-expanded="false" aria-haspopup="dialog" title="Informasi akun">
+          <span class="account-avatar" id="userAvatar">?</span>
+          <span class="account-copy">
+            <span class="account-name" id="userName">—</span>
+            <span class="account-role" id="userRole">—</span>
+            <span id="syncStatus" class="sync-status" data-state="lokal" title="Mode lokal">Mode lokal</span>
+          </span>
+          <svg class="account-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div id="accountPopover" class="account-popover" role="dialog" aria-label="Informasi akun" aria-hidden="true">
+          <div class="account-popover-header">
+            <div class="account-avatar account-avatar-lg" id="accountPopoverAvatar">?</div>
+            <div class="account-popover-identity">
+              <div class="account-popover-name" id="accountPopoverName">—</div>
+              <div class="account-popover-email" id="accountPopoverEmail">—</div>
+            </div>
+          </div>
+          <div class="account-popover-meta">
+            <div class="account-meta-row"><span>Peran</span><strong id="accountPopoverRole">—</strong></div>
+            <div class="account-meta-row"><span>Status</span><strong class="account-online"><i></i>Online</strong></div>
+            <div class="account-meta-row"><span>Data</span><strong id="accountPopoverSync">—</strong></div>
+          </div>
+          <div class="account-popover-footer">
+            <button id="accountSignout" class="account-signout" type="button">Sign out</button>
+          </div>
         </div>
-        <button class="account-signout" onclick="Auth.logout()" title="Sign Out" aria-label="Sign Out">⏻</button>
       </div>
       <div class="topbar-utilities">
         <div class="presence-wrap">
@@ -146,7 +165,7 @@
   </div>
 
   <script src="js/utils.js?v=6"></script>
-  <script src="js/storage.js?v=6"></script>
+  <script src="js/storage.js?v=8"></script>
   <script src="js/db.js?v=6"></script>
   <script src="js/auth.js?v=8"></script>
   <script src="js/presence.js?v=5"></script>
@@ -156,6 +175,6 @@
   <script src="js/kanban.js?v=6"></script>
   <script src="js/settings.js?v=6"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
-  <script src="js/app.js"></script>
+  <script src="js/app.js?v=9"></script>
 </body>
 </html>

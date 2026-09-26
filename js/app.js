@@ -36,9 +36,33 @@ const App = {
 
     document.getElementById('presenceButton').addEventListener('click', (event) => {
       event.stopPropagation();
-      window.Presence.toggle();
+      window.Presence?.toggle();
     });
-    document.addEventListener('click', () => window.Presence?.close());
+
+    const accountButton = document.getElementById('accountButton');
+    const accountPopover = document.getElementById('accountPopover');
+    const closeAccountPopover = () => {
+      if (!accountButton || !accountPopover) return;
+      accountButton.setAttribute('aria-expanded', 'false');
+      accountPopover.classList.remove('is-open');
+      accountPopover.setAttribute('aria-hidden', 'true');
+    };
+    if (accountButton && accountPopover) accountButton.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const willOpen = !accountPopover.classList.contains('is-open');
+      if (!willOpen) return closeAccountPopover();
+      accountButton.setAttribute('aria-expanded', 'true');
+      accountPopover.classList.add('is-open');
+      accountPopover.setAttribute('aria-hidden', 'false');
+    });
+    document.getElementById('accountSignout')?.addEventListener('click', () => {
+      closeAccountPopover();
+      Auth.logout();
+    });
+    document.addEventListener('click', (event) => {
+      if (!event.target.closest('.presence-wrap')) window.Presence?.close();
+      if (!event.target.closest('.account-wrap')) closeAccountPopover();
+    });
 
     document.getElementById('themeToggle').addEventListener('click', () => {
       const cur = document.documentElement.getAttribute('data-theme');
@@ -72,7 +96,11 @@ const App = {
     });
 
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') App.closeModal();
+      if (e.key === 'Escape') {
+        App.closeModal();
+        window.Presence?.close();
+        closeAccountPopover();
+      }
     });
 
     window.addEventListener('hashchange', () => App.route());
@@ -105,19 +133,25 @@ const App = {
     const authArea = document.getElementById('authArea');
     if (authArea) {
       const user = Auth.getUser();
+      const accountButton = document.getElementById('accountButton');
       if (user && DB.isCloud()) {
+        const email = user.email || '';
+        const name = user.user_metadata?.name || email.split('@')[0] || 'User';
+        const role = user.user_metadata?.role || 'Estimator · PT. Starcom';
+        const initial = name.charAt(0).toUpperCase();
         authArea.style.display = 'block';
-        document.getElementById('userName').textContent = user.email || 'User';
-        document.getElementById('userRole').textContent = 'Estimator · PT. Starcom';
-        document.getElementById('userAvatar').textContent = (user.email || '?')[0].toUpperCase();
-      } else if (DB.isCloud()) {
-        authArea.style.display = 'block';
-        document.getElementById('userName').textContent = 'Not signed in';
-        document.getElementById('userRole').textContent = 'Cloud mode';
-        document.getElementById('userAvatar').textContent = '?';
-        // Click to login
-        authArea.onclick = () => Auth.showLogin();
-        authArea.style.cursor = 'pointer';
+        authArea.onclick = null;
+        if (accountButton) accountButton.disabled = false;
+        document.getElementById('userName').textContent = name;
+        document.getElementById('userRole').textContent = role;
+        document.getElementById('userAvatar').textContent = initial;
+        document.getElementById('accountPopoverName').textContent = name;
+        document.getElementById('accountPopoverEmail').textContent = email || 'Email tidak tersedia';
+        document.getElementById('accountPopoverRole').textContent = role;
+        document.getElementById('accountPopoverAvatar').textContent = initial;
+        const sync = document.getElementById('syncStatus');
+        document.getElementById('accountPopoverSync').textContent = sync?.textContent || 'Cloud tersinkron';
+        document.getElementById('accountSignout').hidden = false;
       } else {
         authArea.style.display = 'none';
       }

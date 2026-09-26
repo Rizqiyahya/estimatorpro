@@ -69,9 +69,12 @@ const Storage = {
     const el = document.getElementById('syncStatus');
     if (!el) return;
     const labels = { lokal: 'Mode lokal', syncing: 'Menyinkronkan…', synced: 'Tersinkron', pending: 'Menunggu sinkronisasi', error: 'Sinkronisasi gagal' };
-    el.textContent = labels[state] || state;
-    el.title = detail || el.textContent;
+    const label = labels[state] || state;
+    el.textContent = label;
+    el.title = detail || label;
     el.dataset.state = state;
+    const accountSync = document.getElementById('accountPopoverSync');
+    if (accountSync) accountSync.textContent = label;
   },
   _enqueue(op, data) {
     const queue = this._loadQueue();
