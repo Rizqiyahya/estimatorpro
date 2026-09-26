@@ -1,383 +1,293 @@
 /* ============================================================
-   EstimatorPro v5 — Dashboard (6-Row Layout)
+   EstimatorPro — Interactive Weekly Dashboard
+   Weekly period is Monday 00:00 through Sunday 23:59.
    ============================================================ */
 
 const Dashboard = {
-  /* ---- SVG Donut Chart ---- */
-  _donut(data, colors, size) {
-    const total = data.reduce((s, d) => s + d.value, 0) || 1;
-    const cx = size / 2, cy = size / 2, r = size / 2 - 16, sw = 20;
-    const circ = 2 * Math.PI * r;
-    let offset = 0;
-    let segments = '';
-    data.forEach((d, i) => {
-      if (d.value === 0) return;
-      const dash = (d.value / total) * circ;
-      segments += `<circle r="${r}" cx="${cx}" cy="${cy}" fill="none" stroke="${colors[i]}" stroke-width="${sw}" stroke-dasharray="${dash} ${circ-dash}" stroke-dashoffset="${-offset}" stroke-linecap="butt" transform="rotate(-90 ${cx} ${cy})" />`;
-      offset += dash;
+  period: null,
+  division: 'all',
+  sales: 'all',
+  status: 'all',
+  detail: null,
+
+  _dateOnly(date) {
+    const d = new Date(date);
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  },
+
+  _dateKey(date) {
+    const d = this._dateOnly(date);
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  },
+
+  _weekRange(offset = 0) {
+    const today = this._dateOnly(new Date());
+    const weekday = today.getDay(); // Sunday 0, Monday 1
+    const sinceMonday = weekday === 0 ? 6 : weekday - 1;
+    const start = new Date(today);
+    start.setDate(today.getDate() - sinceMonday + (offset * 7));
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    return { start, end };
+  },
+
+  _periodInfo() {
+    const period = this.period || (new Date().getDay() === 1 ? 'previous' : 'current');
+    const range = period === 'previous' ? this._weekRange(-1) : this._weekRange(0);
+    const label = period === 'previous' ? 'Minggu lalu' : 'Minggu ini';
+    return {
+      period,
+      label,
+      start: range.start,
+      end: range.end,
+      startKey: this._dateKey(range.start),
+      endKey: this._dateKey(range.end),
+      display: `${range.start.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })} – ${range.end.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}`
+    };
+  },
+
+  _salesOf(task, requestById) {
+    return (task.requestBy || requestById || 'Belum diisi').trim() || 'Belum diisi';
+  },
+
+  _doneAt(task) {
+    const history = Array.isArray(task.pipelineHistory) ? task.pipelineHistory : [];
+    const doneEvents = history.filter(item => item.status === 'done' && item.at);
+    if (doneEvents.length) return new Date(doneEvents[doneEvents.length - 1].at);
+    // Data lama yang belum memiliki pipeline history memakai updatedAt sebagai pendekatan.
+    return task.pipelineStatus === 'done' && task.updatedAt ? new Date(task.updatedAt) : null;
+  },
+
+  _inRange(date, info) {
+    if (!date || Number.isNaN(date.getTime())) return false;
+    const day = this._dateOnly(date).getTime();
+    return day >= info.start.getTime() && day <= info.end.getTime();
+  },
+
+  _data() {
+    const info = this._periodInfo();
+    const requests = Storage.getRequests();
+    const reqMap = new Map(requests.map(request => [request.id, request]));
+    const enriched = Storage.getTasks().map(task => {
+      const request = reqMap.get(task.requestId) || {};
+      return { ...task, request, division: request.division || '—', sales: this._salesOf(task, request.requestBy) };
     });
-    const pct = total > 0 ? Math.round((data[0]?.value||0)/total*100) : 0;
-    return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" class="donut-chart">${segments}<text x="${cx}" y="${cy}" text-anchor="middle" dy="0.35em" class="donut-center">${pct}%</text></svg>`;
+    const salesList = [...new Set(enriched.map(task => task.sales).filter(s => s !== 'Belum diisi'))]
+      .sort((a, b) => a.localeCompare(b, 'id'));
+    const scoped = enriched.filter(task =>
+      (this.division === 'all' || task.division === this.division) &&
+      (this.sales === 'all' || task.sales === this.sales) &&
+      (this.status === 'all' || task.pipelineStatus === this.status)
+    );
+    const scopedRequests = requests.filter(request =>
+      (this.division === 'all' || request.division === this.division) &&
+      (this.sales === 'all' || (request.requestBy || 'Belum diisi') === this.sales)
+    );
+    return { info, requests, scopedRequests, tasks: scoped, salesList };
   },
 
-  /* ---- Legend ---- */
-  _legend(items, colors) {
-    return items.map((item, i) => `
-      <div class="legend-item">
-        <span class="legend-dot" style="background:${colors[i]}"></span>
-        <span class="legend-label">${item.label}</span>
-        <span class="legend-value">${item.value}</span>
-      </div>`).join('');
+  setFilter(key, value) {
+    this[key] = value;
+    this.detail = null;
+    this.refresh();
   },
 
-  /* ---- Main Render ---- */
+  resetFilters() {
+    this.period = new Date().getDay() === 1 ? 'previous' : 'current';
+    this.division = 'all';
+    this.sales = 'all';
+    this.status = 'all';
+    this.detail = null;
+    this.refresh();
+  },
+
+  showDetails(type, value = '') {
+    this.detail = { type, value };
+    this.refresh();
+    requestAnimationFrame(() => document.getElementById('dashboardDetail')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }));
+  },
+
+  closeDetails() {
+    this.detail = null;
+    this.refresh();
+  },
+
+  _filterButton(label, key, value, active) {
+    return `<button class="filter-pill ${active ? 'active' : ''}" onclick="Dashboard.setFilter('${key}','${value}')">${label}</button>`;
+  },
+
+  _taskRow(task, info) {
+    const target = task.targetDate ? new Date(`${task.targetDate}T00:00:00`) : null;
+    const today = this._dateOnly(new Date());
+    const overdue = target && task.pipelineStatus !== 'done' && target < today;
+    const doneAt = this._doneAt(task);
+    return `<tr>
+      <td data-label="Task"><strong>${Utils.escapeHtml(task.subjectTask || '—')}</strong><div class="dash-detail-subject">${Utils.escapeHtml(task.subjectRequest || task.request.subject || '—')}</div></td>
+      <td data-label="Divisi"><span class="badge ${Utils.divClass(task.division)}">${Utils.escapeHtml(task.division)}</span></td>
+      <td data-label="Sales PIC">${Utils.escapeHtml(task.sales)}</td>
+      <td data-label="Status">${Utils.pipeBadge(task.pipelineStatus)}</td>
+      <td data-label="Target">${target ? `<span class="${overdue ? 'dash-overdue-text' : ''}">${Utils.formatDateShort(task.targetDate)}${overdue ? ' ⚠' : ''}</span>` : '—'}</td>
+      <td data-label="Done">${doneAt ? Utils.formatDateShort(doneAt) : '—'}</td>
+      <td data-label="Aksi"><button class="btn btn-secondary btn-xs" onclick="Dashboard.openTask('${task.id}')">Open Task</button></td>
+    </tr>`;
+  },
+
+  _detailPanel(tasks, info) {
+    if (!this.detail) return '';
+    const { type, value } = this.detail;
+    const today = this._dateOnly(new Date());
+    let title = 'Semua Task Dalam Scope';
+    let filtered = tasks;
+
+    if (type === 'status') {
+      title = `Pipeline: ${Utils.capitalize(value.replace('_', ' '))}`;
+      filtered = tasks.filter(task => task.pipelineStatus === value);
+    } else if (type === 'division') {
+      title = `Divisi ${value}`;
+      filtered = tasks.filter(task => task.division === value);
+    } else if (type === 'sales') {
+      title = `Sales PIC: ${value}`;
+      filtered = tasks.filter(task => task.sales === value);
+    } else if (type === 'done-week') {
+      title = `Selesai pada periode ${info.display}`;
+      filtered = tasks.filter(task => this._inRange(this._doneAt(task), info));
+    } else if (type === 'overdue') {
+      title = 'Task Overdue';
+      filtered = tasks.filter(task => task.targetDate && task.pipelineStatus !== 'done' && new Date(`${task.targetDate}T00:00:00`) < today);
+    } else if (type === 'due-week') {
+      title = `Target selesai ${info.display}`;
+      filtered = tasks.filter(task => task.targetDate && task.pipelineStatus !== 'done' && this._inRange(new Date(`${task.targetDate}T00:00:00`), info));
+    } else if (type === 'high') {
+      title = 'High Priority';
+      filtered = tasks.filter(task => task.priority === 'High' && task.pipelineStatus !== 'done');
+    } else if (type === 'revisi') {
+      title = 'Task Revisi';
+      filtered = tasks.filter(task => task.pipelineStatus === 'revisi');
+    }
+
+    filtered = filtered.slice().sort((a, b) => {
+      const aTarget = a.targetDate || '9999-12-31';
+      const bTarget = b.targetDate || '9999-12-31';
+      return aTarget.localeCompare(bTarget);
+    });
+
+    return `<section id="dashboardDetail" class="card dashboard-detail-card">
+      <div class="card-header">
+        <div><h3 class="card-title">${Utils.escapeHtml(title)}</h3><span class="dashboard-detail-count">${filtered.length} task ditemukan</span></div>
+        <button class="btn btn-secondary btn-xs" onclick="Dashboard.closeDetails()">✕ Close</button>
+      </div>
+      ${filtered.length ? `<div class="table-container dashboard-detail-table"><table><thead><tr><th>Task / Request</th><th>Divisi</th><th>Sales PIC</th><th>Status</th><th>Target</th><th>Done</th><th></th></tr></thead><tbody>${filtered.map(task => this._taskRow(task, info)).join('')}</tbody></table></div>` : `<div class="dashboard-empty">Tidak ada task pada pilihan ini.</div>`}
+    </section>`;
+  },
+
+  openTask(taskId) {
+    const task = Storage.getTasks().find(item => item.id === taskId);
+    const requestId = task?.requestId || '';
+    App.navigate('#tasks');
+    if (requestId) setTimeout(() => Tasks?.filterByRequest?.(requestId), 0);
+  },
+
   render() {
-    const reqs = Storage.getRequests();
-    const tasks = Storage.getTasks();
-
-    const totalReq = reqs.length;
-    const totalTasks = tasks.length;
-    const open = reqs.filter(r => r.status === 'open').length;
-    const win = reqs.filter(r => r.status === 'win').length;
-    const lose = reqs.filter(r => r.status === 'lose').length;
-    const winRate = totalReq > 0 ? Math.round((win / totalReq) * 100) : 0;
-
-    const active = tasks.filter(t => t.pipelineStatus !== 'done').length;
-    const done = tasks.filter(t => t.pipelineStatus === 'done').length;
-    const revisi = tasks.filter(t => t.pipelineStatus === 'revisi').length;
-
-    // Pipeline counts
-    const pipes = { todo:0, in_progress:0, review:0, done:0, revisi:0 };
-    tasks.forEach(t => { if (pipes[t.pipelineStatus] !== undefined) pipes[t.pipelineStatus]++; });
-    const totalPipe = Math.max(Object.values(pipes).reduce((s,v)=>s+v,0), 1);
-
-    // Per division - tasks
-    const divs = { NETCO:0, OMG:0, ITSOL:0 };
-    tasks.forEach(t => { const r = reqs.find(rr=>rr.id===t.requestId); if (r&&divs[r.division]!==undefined) divs[r.division]++; });
-    const maxDiv = Math.max(...Object.values(divs), 1);
-
-    // Scope breakdown (tasks)
-    const scopePL = tasks.filter(t => t.scopePL).length;
-    const scopePS = tasks.filter(t => t.scopePS).length;
-    const scopeMS = tasks.filter(t => t.scopeMS).length;
-    const maxScope = Math.max(scopePL, scopePS, scopeMS, 1);
-    // Scope yang masih aktif (belum done) — untuk follow-up per scope
-    const scopeActPL = tasks.filter(t => t.scopePL && t.pipelineStatus !== 'done').length;
-    const scopeActPS = tasks.filter(t => t.scopePS && t.pipelineStatus !== 'done').length;
-    const scopeActMS = tasks.filter(t => t.scopeMS && t.pipelineStatus !== 'done').length;
-
-    // Per division - win rate
-    const divStats = { NETCO:{total:0,win:0,lose:0,open:0}, OMG:{total:0,win:0,lose:0,open:0}, ITSOL:{total:0,win:0,lose:0,open:0} };
-    reqs.forEach(r => { if (divStats[r.division]) { divStats[r.division].total++; if (r.status==='win')divStats[r.division].win++; if (r.status==='lose')divStats[r.division].lose++; if (r.status==='open')divStats[r.division].open++; }});
-    const divWR = Object.entries(divStats).map(([div,s]) => ({ div, total:s.total, win:s.win, lose:s.lose, open:s.open, winRate:s.total>0?Math.round((s.win/Math.max(s.win+s.lose,1))*100):0, color:div==='NETCO'?'var(--netco)':div==='OMG'?'var(--omg)':'var(--itsol)' }));
-
-    // 7-day
-    const wkAgo = new Date(Date.now() - 7*24*60*60*1000);
-    const newThisWeek = reqs.filter(r => new Date(r.createdAt) >= wkAgo).length;
-    const doneThisWeek = tasks.filter(t => t.pipelineStatus==='done' && new Date(t.updatedAt)>=wkAgo).length;
-    const highPrio = tasks.filter(t => t.priority==='High').length;
-
-    // Cycle time
-    const cycleTimes = tasks.filter(t=>t.pipelineHistory&&t.pipelineHistory.length>1).map(t=>Utils.calcCycleTime(t.pipelineHistory)).filter(ms=>ms!==null);
-    const avgCycle = cycleTimes.length ? Math.round(cycleTimes.reduce((a,b)=>a+b,0)/cycleTimes.length) : 0;
-    const sortedCycle = [...cycleTimes].sort((a,b)=>a-b);
-    const medCycle = sortedCycle.length ? sortedCycle[Math.floor(sortedCycle.length/2)] : 0;
-    const stuckTasks = tasks.filter(t=>{ if(!t.pipelineHistory||t.pipelineStatus==='done')return false; const la=new Date(t.pipelineHistory[t.pipelineHistory.length-1].at).getTime(); return (Date.now()-la)>3*24*60*60*1000; }).length;
-
-    // Target date (targetDone) — overdue & due soon
-    const today0 = new Date(); today0.setHours(0,0,0,0);
-    const soon3 = new Date(today0); soon3.setDate(soon3.getDate()+3);
-    const overdueT = tasks.filter(t => t.targetDate && t.pipelineStatus !== 'done' && new Date(t.targetDate+'T00:00:00') < today0).length;
-    const dueSoonT = tasks.filter(t => t.targetDate && t.pipelineStatus !== 'done' && new Date(t.targetDate+'T00:00:00') >= today0 && new Date(t.targetDate+'T00:00:00') <= soon3).length;
-    const hasTarget = tasks.filter(t => t.targetDate).length;
-
-    // Customer breakdown
-    const custMap = {};
-    reqs.forEach(r => { const c=(r.customer||'Unknown').trim(); if(!custMap[c])custMap[c]={total:0,open:0,win:0,lose:0}; custMap[c].total++; if(r.status==='open')custMap[c].open++; if(r.status==='win')custMap[c].win++; if(r.status==='lose')custMap[c].lose++; });
-    const topCust = Object.entries(custMap).sort((a,b)=>b[1].total-a[1].total).slice(0,8);
-    const maxCust = topCust.length ? topCust[0][1].total : 1;
-    const uniqueCust = Object.keys(custMap).length;
-    const custColors = ['var(--accent)','var(--blue)','var(--green)','var(--purple)','var(--orange)','var(--cyan)','var(--netco)','var(--pipe-inprog)'];
-
-    // End user breakdown (from endUser field)
-    const userMap = {};
-    reqs.forEach(r => {
-      const raw = r.endUser || '';
-      if (!raw.trim()) return;
-      raw.split(',').forEach(s => {
-        const name = s.trim();
-        if (!name || name.length < 2) return;
-        if (!userMap[name]) userMap[name] = { count:0, divisi:{} };
-        userMap[name].count++;
-        const div = r.division || 'NETCO';
-        userMap[name].divisi[div] = (userMap[name].divisi[div]||0) + 1;
-      });
-    });
-    const topUser = Object.entries(userMap).sort((a,b) => b[1].count - a[1].count).slice(0,8);
-    const maxUser = topUser.length ? topUser[0][1].count : 1;
-
-    // Recent activity
-    const recent = tasks.filter(t => new Date(t.updatedAt)>=wkAgo).sort((a,b)=>new Date(b.updatedAt)-new Date(a.updatedAt)).slice(0,5);
-
-    // Donut data
-    const reqStatus = [{ value: win, label: 'Win' },{ value: open, label: 'Open' },{ value: lose, label: 'Lose' }];
-    const reqColors = ['var(--green)','var(--blue)','var(--red)'];
-    const pipeItems = [
-      { key:'todo',label:'To Do',color:'var(--pipe-todo)',count:pipes.todo },
-      { key:'in_progress',label:'In Progress',color:'var(--pipe-inprog)',count:pipes.in_progress },
-      { key:'review',label:'Review',color:'var(--pipe-review)',count:pipes.review },
-      { key:'done',label:'Done',color:'var(--pipe-done)',count:pipes.done },
-      { key:'revisi',label:'Revisi',color:'var(--pipe-revisi)',count:pipes.revisi }
+    const { info, scopedRequests, tasks, salesList } = this._data();
+    const today = this._dateOnly(new Date());
+    const statusItems = [
+      { key: 'todo', label: 'To Do', color: 'var(--yellow)' },
+      { key: 'in_progress', label: 'In Progress', color: 'var(--blue)' },
+      { key: 'review', label: 'Review', color: 'var(--purple)' },
+      { key: 'done', label: 'Done', color: 'var(--green)' },
+      { key: 'revisi', label: 'Revisi', color: 'var(--orange)' }
     ];
+    const counts = Object.fromEntries(statusItems.map(item => [item.key, tasks.filter(task => task.pipelineStatus === item.key).length]));
+    const active = tasks.filter(task => task.pipelineStatus !== 'done').length;
+    const doneThisPeriod = tasks.filter(task => this._inRange(this._doneAt(task), info));
+    const overdue = tasks.filter(task => task.targetDate && task.pipelineStatus !== 'done' && new Date(`${task.targetDate}T00:00:00`) < today);
+    const dueInPeriod = tasks.filter(task => task.targetDate && task.pipelineStatus !== 'done' && this._inRange(new Date(`${task.targetDate}T00:00:00`), info));
+    const high = tasks.filter(task => task.priority === 'High' && task.pipelineStatus !== 'done');
+    const revisi = tasks.filter(task => task.pipelineStatus === 'revisi');
+    const completionRate = tasks.length ? Math.round((counts.done / tasks.length) * 100) : 0;
+    const divisionStats = ['NETCO', 'OMG', 'ITSOL'].map(division => {
+      const items = tasks.filter(task => task.division === division);
+      return { division, total: items.length, done: items.filter(task => task.pipelineStatus === 'done').length, active: items.filter(task => task.pipelineStatus !== 'done').length, overdue: items.filter(task => task.targetDate && task.pipelineStatus !== 'done' && new Date(`${task.targetDate}T00:00:00`) < today).length };
+    });
+    const salesStats = [...new Map(tasks.map(task => [task.sales, task])).keys()].sort((a,b) => a.localeCompare(b, 'id')).map(sales => {
+      const items = tasks.filter(task => task.sales === sales);
+      return { sales, total: items.length, done: items.filter(task => task.pipelineStatus === 'done').length, active: items.filter(task => task.pipelineStatus !== 'done').length, overdue: items.filter(task => task.targetDate && task.pipelineStatus !== 'done' && new Date(`${task.targetDate}T00:00:00`) < today).length };
+    });
+    const maxDivision = Math.max(...divisionStats.map(item => item.total), 1);
+    const recent = tasks.filter(task => task.updatedAt && this._inRange(new Date(task.updatedAt), info)).sort((a,b) => new Date(b.updatedAt) - new Date(a.updatedAt)).slice(0, 7);
 
     return `
       <div class="page-header">
-        <div>
-          <h1 class="page-title">Dashboard</h1>
-          <p class="page-subtitle">Weekly Pipeline Report — ${new Date().toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p>
-        </div>
+        <div><h1 class="page-title">Dashboard</h1><p class="page-subtitle">Weekly Pipeline Review · ${info.display}</p></div>
+        <span class="dashboard-period-badge">${info.label}</span>
       </div>
 
-      <!-- ======== ROW 1: KPI (1:1:1:1) ======== -->
-      <div class="kpi-grid">
-        <div class="kpi-card">
-          <div class="kpi-label">Total Requests</div>
-          <div class="kpi-value">${totalReq}</div>
-          <div class="kpi-sub">+${newThisWeek} this week</div>
+      <section class="dashboard-filters card">
+        <div class="dashboard-filter-group"><span class="dashboard-filter-label">Periode</span>
+          ${this._filterButton('Minggu ini', 'period', 'current', info.period === 'current')}
+          ${this._filterButton('Minggu lalu', 'period', 'previous', info.period === 'previous')}
         </div>
-        <div class="kpi-card">
-          <div class="kpi-label">Win Rate</div>
-          <div class="kpi-value" style="color:${winRate>=50?'var(--green)':'var(--orange)'}">${winRate}%</div>
-          <div class="kpi-sub">${win} Won · ${lose} Lost · <span style="color:var(--blue)">${open} Open</span></div>
+        <div class="dashboard-filter-group"><span class="dashboard-filter-label">Divisi</span>
+          ${this._filterButton('Semua', 'division', 'all', this.division === 'all')}
+          ${['NETCO','OMG','ITSOL'].map(division => this._filterButton(division, 'division', division, this.division === division)).join('')}
         </div>
-        <div class="kpi-card">
-          <div class="kpi-label">Active Pipeline</div>
-          <div class="kpi-value">${active}</div>
-          <div class="kpi-sub">${done} Done · ${revisi} Revisi · ${highPrio} <span style="color:var(--red)">High</span></div>
-          <div class="kpi-sub" style="margin-top:3px;font-size:0.66rem">
-            <span style="color:var(--blue);font-weight:600">PL ${scopeActPL}</span> ·
-            <span style="color:var(--purple);font-weight:600">PS ${scopeActPS}</span> ·
-            <span style="color:var(--cyan);font-weight:600">MS ${scopeActMS}</span>
-            <span style="color:var(--text-muted)">aktif</span>
-            ${overdueT>0?` · <span style="color:var(--red);font-weight:600">⚠ ${overdueT} overdue</span>`:''}
-          </div>
+        <div class="dashboard-filter-group"><label class="dashboard-filter-label" for="dashboardSales">Sales PIC</label>
+          <select id="dashboardSales" class="form-select dashboard-select" onchange="Dashboard.setFilter('sales',this.value)"><option value="all">Semua Sales</option>${salesList.map(sales => `<option value="${Utils.escapeHtml(sales)}" ${this.sales === sales ? 'selected' : ''}>${Utils.escapeHtml(sales)}</option>`).join('')}</select>
         </div>
-        <div class="kpi-card">
-          <div class="kpi-label" title="Cycle time = waktu dari status pertama hingga status saat ini/Done (dari pipelineHistory). Task yang baru punya 1 entry history tidak dihitung. Karena data di-backfill dari awal 2026, nilai ini bisa tampak besar — lihat median sebagai pembanding.">Avg. Cycle Time ⓘ</div>
-          <div class="kpi-value" style="font-size:1.6rem">${Utils.formatDuration(avgCycle)}</div>
-          <div class="kpi-sub">median ${Utils.formatDuration(medCycle)} · dari ${cycleTimes.length} task</div>
-          <div class="kpi-sub" style="font-size:0.66rem;color:var(--text-muted)">${stuckTasks>0?`<span style="color:var(--orange)">⚠${stuckTasks} stuck >3d</span>`:'No stuck'}</div>
+        <div class="dashboard-filter-group"><label class="dashboard-filter-label" for="dashboardStatus">Status</label>
+          <select id="dashboardStatus" class="form-select dashboard-select" onchange="Dashboard.setFilter('status',this.value)"><option value="all">Semua Status</option>${statusItems.map(item => `<option value="${item.key}" ${this.status === item.key ? 'selected' : ''}>${item.label}</option>`).join('')}</select>
         </div>
+        <button class="btn btn-secondary btn-xs dashboard-reset" onclick="Dashboard.resetFilters()">Reset</button>
+      </section>
+
+      <div class="kpi-grid dashboard-kpis">
+        <button class="kpi-card dashboard-kpi-button" onclick="Dashboard.showDetails('all')"><div class="kpi-label">Task Dalam Scope</div><div class="kpi-value">${tasks.length}</div><div class="kpi-sub">${scopedRequests.length} tender · klik untuk detail</div></button>
+        <button class="kpi-card dashboard-kpi-button" onclick="Dashboard.showDetails('done-week')"><div class="kpi-label">Done Periode Ini</div><div class="kpi-value" style="color:var(--green)">${doneThisPeriod.length}</div><div class="kpi-sub">Masuk Done ${info.display}</div></button>
+        <button class="kpi-card dashboard-kpi-button" onclick="Dashboard.showDetails('overdue')"><div class="kpi-label">Perlu Tindak Lanjut</div><div class="kpi-value" style="color:${overdue.length ? 'var(--red)' : 'var(--green)'}">${overdue.length}</div><div class="kpi-sub">Overdue dan belum Done</div></button>
+        <button class="kpi-card dashboard-kpi-button" onclick="Dashboard.showDetails('status','done')"><div class="kpi-label">Progress Saat Ini</div><div class="kpi-value" style="color:var(--accent)">${completionRate}%</div><div class="kpi-sub">${counts.done} Done · ${active} aktif</div></button>
       </div>
 
-      <!-- ======== ROW 2: Pipeline (2) + Req Status (1) + Task Div (1) ======== -->
-      <div class="dash-grid-211">
-        <div class="card">
-          <div class="card-header">
-            <h3 class="card-title">Pipeline Status</h3>
-            <span style="font-size:0.76rem;color:var(--text-muted)">${totalTasks} total tasks</span>
-          </div>
-          <div class="pipeline-bar">
-            ${pipeItems.map(p => { const pct=(p.count/totalPipe)*100; return pct>0?`<div class="pipeline-segment ${p.key}" style="width:${pct}%" title="${p.label}: ${p.count}"></div>`:''; }).join('')}
-          </div>
-          ${pipeItems.map(p => `
-            <div class="pipe-legend-row">
-              <div style="display:flex;align-items:center;gap:10px"><span class="pipe-dot" style="background:${p.color}"></span><span class="pipe-label">${p.label}</span></div>
-              <span class="pipe-count">${p.count}</span>
-            </div>`).join('')}
-        </div>
-
-        <div class="card">
-          <div class="card-header"><h3 class="card-title">Request Status</h3></div>
-          <div class="donut-wrap" style="justify-content:center">
-            ${this._donut(reqStatus, reqColors, 150)}
-            <div class="donut-legend">${this._legend(reqStatus, reqColors)}</div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header"><h3 class="card-title">Scope Pipeline</h3>
-            <span style="font-size:0.68rem;color:var(--text-muted)" title="Aktif = belum done (perlu follow-up)">Aktif vs Done</span>
-          </div>
-          <div class="bar-chart" style="margin-top:8px">
-            ${[
-              { key:'PL', total:scopePL, act:scopeActPL, color:'var(--blue)' },
-              { key:'PS', total:scopePS, act:scopeActPS, color:'var(--purple)' },
-              { key:'MS', total:scopeMS, act:scopeActMS, color:'var(--cyan)' }
-            ].map(s => {
-              const don = s.total - s.act;
-              const actPct = (s.total>0 ? s.act/s.total : 0) * 100;
-              return `<div class="bar-row">
-                <div class="bar-label" style="color:${s.color};font-weight:600">${s.key}</div>
-                <div class="bar-track" style="display:flex">
-                  <div class="bar-fill" style="width:${actPct}%;background:${s.color};border-radius:3px 0 0 3px"><span class="bar-value">${s.act}</span></div>
-                  <div class="bar-fill" style="width:${100-actPct}%;background:var(--green);opacity:0.28;border-radius:0 3px 3px 0"><span class="bar-value" style="text-shadow:none;color:var(--green);opacity:0.9">${don}</span></div>
-                </div>
-                <div style="font-size:0.68rem;color:var(--text-secondary);min-width:74px;text-align:right;font-weight:600">${s.act} aktif<br><span style="font-weight:400;color:var(--green)">${don} done</span></div>
-              </div>`;
-            }).join('')}
-          </div>
-          <div style="margin-top:6px;font-size:0.64rem;color:var(--text-muted);text-align:center">
-            <span style="color:var(--blue)">■</span> aktif (follow-up) · <span style="color:var(--green)">▨</span> done · total: PL ${scopePL} · PS ${scopePS} · MS ${scopeMS}
-          </div>
-        </div>
-      </div>
-
-      <!-- ======== ROW 3: Division Breakdown (2) + Win Rate (2) ======== -->
       <div class="dash-grid-2">
-        <div class="card">
-          <div class="card-header"><h3 class="card-title">Division Breakdown — Tasks</h3>
-            <span style="font-size:0.72rem;color:var(--text-muted)">angka = jumlah · % = porsi</span>
+        <section class="card">
+          <div class="card-header"><div><h3 class="card-title">Pipeline Status</h3><span class="dashboard-card-hint">Klik status untuk membuka daftar task</span></div><span class="dashboard-total">${tasks.length} task</span></div>
+          <div class="dashboard-pipeline-list">${statusItems.map(item => `<button class="dashboard-pipeline-row" onclick="Dashboard.showDetails('status','${item.key}')"><span class="pipe-dot" style="background:${item.color}"></span><span>${item.label}</span><span class="dashboard-pipeline-count">${counts[item.key]}</span><span class="dashboard-pipeline-percent">${tasks.length ? Math.round((counts[item.key] / tasks.length) * 100) : 0}%</span></button>`).join('')}</div>
+        </section>
+        <section class="card">
+          <div class="card-header"><div><h3 class="card-title">⚠ Perlu Perhatian</h3><span class="dashboard-card-hint">Prioritas untuk dibahas dalam weekly review</span></div></div>
+          <div class="dashboard-attention-grid">
+            <button class="dashboard-attention danger" onclick="Dashboard.showDetails('overdue')"><strong>${overdue.length}</strong><span>Overdue</span></button>
+            <button class="dashboard-attention warning" onclick="Dashboard.showDetails('due-week')"><strong>${dueInPeriod.length}</strong><span>Target minggu ini</span></button>
+            <button class="dashboard-attention high" onclick="Dashboard.showDetails('high')"><strong>${high.length}</strong><span>High priority</span></button>
+            <button class="dashboard-attention revisi" onclick="Dashboard.showDetails('revisi')"><strong>${revisi.length}</strong><span>Revisi</span></button>
           </div>
-          <div class="bar-chart" style="margin-top:8px">
-            ${[{ div:'NETCO',color:'netco',col:'var(--netco)' },{ div:'OMG',color:'omg',col:'var(--omg)' },{ div:'ITSOL',color:'itsol',col:'var(--itsol)' }].map(d => {
-              const c = divs[d.div]; const pct = maxDiv>0?(c/maxDiv)*100:0;
-              const pctTotal = totalTasks>0?Math.round((c/totalTasks)*100):0;
-              return `<div class="bar-row">
-                <div class="bar-label" style="color:${d.col}">${d.div}</div>
-                <div class="bar-track"><div class="bar-fill ${d.color}" style="width:${pct}%"><span class="bar-value">${c}</span></div></div>
-                <div class="bar-count">${pctTotal}%</div>
-              </div>`;
-            }).join('')}
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header"><h3 class="card-title">Win Rate / Division</h3></div>
-          ${divWR.map(d => {
-            const wrPct = d.winRate; const decided = d.win+d.lose;
-            const wrColor = wrPct>=60?'var(--green)':wrPct>=30?'var(--orange)':'var(--red)';
-            return `<div class="bar-row" style="margin-bottom:10px">
-              <div class="bar-label" style="color:${d.color};font-weight:600">${d.div}</div>
-              <div class="bar-track" style="background:var(--bg-input)"><div class="bar-fill" style="width:${wrPct}%;background:${wrColor};border-radius:3px">${wrPct>25?`<span class="bar-value">${wrPct}%</span>`:''}</div></div>
-              <div style="font-size:0.68rem;color:var(--text-muted);min-width:50px;text-align:right">${d.win}W/${decided}D</div>
-            </div>`;
-          }).join('')}
-          <div style="margin-top:12px;font-size:0.7rem;color:var(--text-muted)">
-            🟢 ≥60% good · 🟠 30-59% caution · 🔴 &lt;30% critical
-          </div>
-        </div>
+        </section>
       </div>
 
-      <!-- ======== ROW 4: Stats (1:1:1:1) ======== -->
-      <div class="kpi-grid" style="margin-bottom:14px">
-        <div class="kpi-card" style="padding:14px 18px">
-          <div class="kpi-label" style="margin-bottom:4px">High Priority</div>
-          <div class="kpi-value" style="font-size:1.8rem;color:var(--red)">${highPrio}</div>
-          <div class="kpi-sub">Tasks needing attention</div>
-        </div>
-        <div class="kpi-card" style="padding:14px 18px">
-          <div class="kpi-label" style="margin-bottom:4px">Done This Week</div>
-          <div class="kpi-value" style="font-size:1.8rem;color:var(--green)">${doneThisWeek}</div>
-          <div class="kpi-sub">Tasks completed</div>
-        </div>
-        <div class="kpi-card" style="padding:14px 18px">
-          <div class="kpi-label" style="margin-bottom:4px">Overall WR</div>
-          <div class="kpi-value" style="font-size:1.8rem;color:var(--accent)">${winRate}%</div>
-          <div class="kpi-sub">${win}W / ${win+lose}D decided</div>
-        </div>
-        <div class="kpi-card" style="padding:14px 18px">
-          <div class="kpi-label" style="margin-bottom:4px">Unique Customers</div>
-          <div class="kpi-value" style="font-size:1.8rem;color:var(--text-primary)">${uniqueCust}</div>
-          <div class="kpi-sub">Across divisions</div>
-        </div>
-      </div>
+      ${this._detailPanel(tasks, info)}
 
-      <!-- ======== Target Done Pipeline ======== -->
-      <div class="card" style="margin-bottom:14px">
-        <div class="card-header">
-          <h3 class="card-title">🎯 Target Done Pipeline</h3>
-          <span style="font-size:0.72rem;color:var(--text-muted)">${hasTarget} dari ${totalTasks} task punya target</span>
-        </div>
-        ${hasTarget===0?`<p style="color:var(--text-muted);font-size:0.82rem;text-align:center;padding:12px">Belum ada task dengan Target Done — isi tanggal target saat menambah/edit task untuk memonitor deadline.</p>`:`
-        <div class="kpi-grid" style="margin-top:6px">
-          <div class="kpi-card" style="padding:12px 16px">
-            <div class="kpi-label" style="margin-bottom:2px;color:var(--red)">Overdue</div>
-            <div class="kpi-value" style="font-size:1.5rem;color:var(--red)">${overdueT}</div>
-            <div class="kpi-sub">Lewat target & belum done</div>
-          </div>
-          <div class="kpi-card" style="padding:12px 16px">
-            <div class="kpi-label" style="margin-bottom:2px;color:var(--orange)">Due ≤3 hari</div>
-            <div class="kpi-value" style="font-size:1.5rem;color:var(--orange)">${dueSoonT}</div>
-            <div class="kpi-sub">Target mendekat</div>
-          </div>
-          <div class="kpi-card" style="padding:12px 16px">
-            <div class="kpi-label" style="margin-bottom:2px">On Track</div>
-            <div class="kpi-value" style="font-size:1.5rem">${hasTarget - overdueT - dueSoonT - tasks.filter(t=>t.targetDate && t.pipelineStatus==='done').length}</div>
-            <div class="kpi-sub">Target &gt;3 hari, belum done</div>
-          </div>
-          <div class="kpi-card" style="padding:12px 16px">
-            <div class="kpi-label" style="margin-bottom:2px;color:var(--green)">Selesai</div>
-            <div class="kpi-value" style="font-size:1.5rem;color:var(--green)">${tasks.filter(t=>t.targetDate && t.pipelineStatus==='done').length}</div>
-            <div class="kpi-sub">Done tepat/lebih awal</div>
-          </div>
-        </div>`}
-      </div>
-
-      <!-- ======== ROW 5: Customer (2) + End User (2) ======== -->
       <div class="dash-grid-2">
-        <div class="card">
-          <div class="card-header">
-            <h3 class="card-title">Customer Breakdown</h3>
-            <span style="font-size:0.72rem;color:var(--text-muted)">Top ${topCust.length} of ${uniqueCust}</span>
-          </div>
-          ${topCust.length===0?`<p style="color:var(--text-muted);font-size:0.82rem;text-align:center;padding:16px">No customer data</p>`:`
-            <div class="bar-chart" style="margin-top:4px">
-              ${topCust.map(([name,stats],i) => {
-                const pct = (stats.total/maxCust)*100;
-                return `<div class="bar-row">
-                  <div class="bar-label" style="width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.75rem;font-weight:500" title="${Utils.escapeHtml(name)}">${Utils.escapeHtml(Utils.truncate(name,16))}</div>
-                  <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${custColors[i]||'var(--accent)'}">${pct>35?`<span class="bar-value">${stats.total}</span>`:''}</div></div>
-                  <span style="font-weight:600;font-size:0.78rem">${stats.total}</span>
-                </div>
-                <div style="display:flex;gap:8px;font-size:0.64rem;color:var(--text-muted);margin:-2px 0 6px 98px">
-                  🟢${stats.win}W 🔴${stats.lose}L
-                </div>`;
-              }).join('')}
-            </div>
-          `}
-        </div>
-
-        <div class="card">
-          <div class="card-header">
-            <h3 class="card-title">End User Breakdown</h3>
-            <span style="font-size:0.72rem;color:var(--text-muted)">Top ${topUser.length} end users</span>
-          </div>
-          ${topUser.length===0?`<p style="color:var(--text-muted);font-size:0.82rem;text-align:center;padding:16px">No end user data</p>`:`
-            <div class="bar-chart" style="margin-top:4px">
-              ${topUser.map(([name, data], i) => {
-                const pct = (data.count/maxUser)*100;
-                const topDiv = Object.entries(data.divisi).sort((a,b)=>b[1]-a[1])[0];
-                const dColor = topDiv ? (topDiv[0]==='NETCO'?'var(--netco)':topDiv[0]==='OMG'?'var(--omg)':'var(--itsol)') : 'var(--accent)';
-                return `<div class="bar-row">
-                  <div class="bar-label" style="width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.75rem;font-weight:500;color:${dColor}" title="${Utils.escapeHtml(name)}">${Utils.escapeHtml(Utils.truncate(name,18))}</div>
-                  <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${dColor};opacity:0.7">${pct>35?`<span class="bar-value">${data.count}</span>`:''}</div></div>
-                  <span style="font-weight:600;font-size:0.78rem">${data.count}</span>
-                </div>`;
-              }).join('')}
-            </div>
-          `}
-        </div>
+        <section class="card">
+          <div class="card-header"><div><h3 class="card-title">Progress per Divisi</h3><span class="dashboard-card-hint">Klik baris untuk melihat task divisi</span></div></div>
+          <div class="dashboard-breakdown">${divisionStats.map(item => {
+            const percent = tasks.length ? Math.round((item.done / item.total) * 100) || 0 : 0;
+            return `<button class="dashboard-breakdown-row" onclick="Dashboard.showDetails('division','${item.division}')"><div class="dashboard-breakdown-head"><span style="color:${Utils.divColor(item.division)}">${item.division}</span><strong>${item.total} task</strong></div><div class="dashboard-progress-track"><span style="width:${(item.total / maxDivision) * 100}%;background:${Utils.divColor(item.division)}"></span></div><div class="dashboard-breakdown-meta"><span>${item.done} Done · ${item.active} aktif</span><span class="${item.overdue ? 'dash-overdue-text' : ''}">${item.overdue ? `⚠ ${item.overdue} overdue` : `${percent}% selesai`}</span></div></button>`;
+          }).join('')}</div>
+        </section>
+        <section class="card">
+          <div class="card-header"><div><h3 class="card-title">Progress per Sales PIC</h3><span class="dashboard-card-hint">Request By (Sales) adalah owner tender</span></div></div>
+          ${salesStats.length ? `<div class="dashboard-sales-list">${salesStats.map(item => `<button class="dashboard-sales-row" onclick="Dashboard.showDetails('sales','${Utils.escapeHtml(item.sales).replace(/'/g, '&#39;')}')"><span class="dashboard-sales-name">${Utils.escapeHtml(item.sales)}</span><span class="dashboard-sales-meta"><b>${item.done}</b> Done · ${item.active} aktif${item.overdue ? ` · <em>⚠ ${item.overdue}</em>` : ''}</span><span class="dashboard-sales-total">${item.total}</span></button>`).join('')}</div>` : `<div class="dashboard-empty">Belum ada Sales PIC pada task yang difilter.</div>`}
+        </section>
       </div>
 
-      <!-- ======== ROW 6: Recent Activity ======== -->
-      <div class="card">
-        <div class="card-header"><h3 class="card-title">Recent Activity (7 Days)</h3></div>
-        ${recent.length===0?`<p style="color:var(--text-muted);font-size:0.82rem;text-align:center;padding:16px">No recent activity</p>`:`
-          <div class="recent-list">
-            ${recent.map(t => {
-              const req = reqs.find(r=>r.id===t.requestId);
-              const ago = Math.max(0,Math.floor((Date.now()-new Date(t.updatedAt))/(1000*60*60*24)));
-              return `<div class="recent-row">
-                <span class="recent-div" style="color:${Utils.divColor(req?.division)}">${req?.division||'—'}</span>
-                <span class="recent-subject">${Utils.escapeHtml(Utils.truncate(t.subjectTask,30))}</span>
-                ${Utils.pipeBadge(t.pipelineStatus)}
-                <span class="recent-ago">${ago}d</span>
-              </div>`;
-            }).join('')}
-          </div>
-        `}
-      </div>
-    `;
+      <section class="card">
+        <div class="card-header"><div><h3 class="card-title">Aktivitas pada Periode</h3><span class="dashboard-card-hint">Perubahan task ${info.display}</span></div></div>
+        ${recent.length ? `<div class="recent-list">${recent.map(task => `<button class="recent-row dashboard-recent-button" onclick="Dashboard.openTask('${task.id}')"><span class="recent-div" style="color:${Utils.divColor(task.division)}">${task.division}</span><span class="recent-subject">${Utils.escapeHtml(task.subjectTask || '—')}<small>${Utils.escapeHtml(task.sales)}</small></span>${Utils.pipeBadge(task.pipelineStatus)}<span class="recent-ago">${Utils.formatDateShort(task.updatedAt)}</span></button>`).join('')}</div>` : `<div class="dashboard-empty">Tidak ada pembaruan task pada periode ini.</div>`}
+      </section>`;
+  },
+
+  refresh() {
+    const content = document.getElementById('mainContent');
+    if (content) content.innerHTML = this.render();
   }
 };
