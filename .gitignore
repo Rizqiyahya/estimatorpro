@@ -15,3 +15,7 @@ Desktop.ini
 
 # Node (just in case)
 node_modules/
+
+# Local AionUi support assets and temporary handoff notes
+.aionrs/
+docs/PROMPT_HANDOFF.md
