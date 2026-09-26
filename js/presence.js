@@ -8,43 +8,70 @@ const Presence = {
   _channel: null,
   _users: [],
   _userId: null,
+  _member: null,
+  _retryTimer: null,
+  _retryCount: 0,
+  _stopped: true,
 
   start(user) {
     if (!DB.isCloud() || !user || !DB._supabase) {
       this.stop();
       return;
     }
-    // Do not recreate an active channel for the same session. Recreating it
-    // during initial page setup could cancel the just-started subscription.
-    if (this._channel && this._userId === user.id) return;
+    // A joined channel for the same session is already tracking this user.
+    if (this._channel && this._userId === user.id && this._channel.state === 'joined') return;
     this.stop();
 
-    const name = (user.user_metadata && user.user_metadata.name || '').trim()
-      || (user.email || 'User').split('@')[0];
-    const email = user.email || '';
-    const channelName = 'estimatorpro-online-users';
+    const name = (user.user_metadata?.name || '').trim() || (user.email || 'User').split('@')[0];
+    this._member = { user_id: user.id, name, email: user.email || '', online_at: new Date().toISOString() };
     this._userId = user.id;
+    this._stopped = false;
+    this._connect();
+  },
 
+  _connect() {
+    if (this._stopped || !this._member || !DB._supabase) return;
+    const member = this._member;
     try {
-      this._channel = DB._supabase.channel(channelName, {
-        config: { presence: { key: user.id } }
+      this._channel = DB._supabase.channel('estimatorpro-online-users', {
+        config: { presence: { key: member.user_id } }
       });
       this._channel
         .on('presence', { event: 'sync' }, () => this._sync())
-        .subscribe(async (status) => {
-          if (status !== 'SUBSCRIBED' || !this._channel) return;
-          const result = await this._channel.track({
-            user_id: user.id,
-            name,
-            email,
-            online_at: new Date().toISOString()
-          });
-          if (result !== 'ok') console.warn('Presence tracking failed:', result);
+        .on('presence', { event: 'join' }, () => this._sync())
+        .on('presence', { event: 'leave' }, () => this._sync())
+        .subscribe(async status => {
+          if (this._stopped) return;
+          if (status === 'SUBSCRIBED') {
+            const result = await this._channel.track(member);
+            if (result !== 'ok') {
+              console.warn('Presence tracking failed:', result);
+              this._scheduleRetry();
+              return;
+            }
+            // Always show the signed-in visitor immediately. Some mobile browsers
+            // delay the first server "sync" event even after track() succeeded.
+            this._mergeSelf();
+            this._retryCount = 0;
+            return;
+          }
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            console.warn('Presence channel status:', status);
+            this._scheduleRetry();
+          }
         });
     } catch (error) {
       console.warn('Presence unavailable:', error.message);
-      this.stop();
+      this._scheduleRetry();
     }
+  },
+
+  _mergeSelf() {
+    if (!this._member) return;
+    const users = new Map(this._users.map(user => [user.user_id, user]));
+    users.set(this._member.user_id, this._member);
+    this._users = [...users.values()].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'id'));
+    this.render();
   },
 
   _sync() {
@@ -52,23 +79,40 @@ const Presence = {
     const grouped = this._channel.presenceState();
     const users = new Map();
     Object.values(grouped).flat().forEach(member => {
-      if (!member || !member.user_id || users.has(member.user_id)) return;
-      users.set(member.user_id, member);
+      if (member?.user_id && !users.has(member.user_id)) users.set(member.user_id, member);
     });
-    this._users = [...users.values()].sort((a, b) =>
-      (a.name || '').localeCompare(b.name || '', 'id')
-    );
-    this.render();
+    this._users = [...users.values()].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'id'));
+    // Preserve the local visitor while its initial presence state is still
+    // propagating. This prevents an incorrect "0 online" on mobile browsers.
+    this._mergeSelf();
+  },
+
+  _scheduleRetry() {
+    if (this._stopped || this._retryTimer) return;
+    const delay = Math.min(30000, 1500 * (2 ** this._retryCount));
+    this._retryCount += 1;
+    this._retryTimer = setTimeout(() => {
+      this._retryTimer = null;
+      if (this._stopped) return;
+      if (this._channel && DB._supabase) DB._supabase.removeChannel(this._channel);
+      this._channel = null;
+      this._connect();
+    }, delay);
   },
 
   stop() {
+    this._stopped = true;
+    clearTimeout(this._retryTimer);
+    this._retryTimer = null;
     if (this._channel && DB._supabase) {
       this._channel.untrack().catch(() => {});
       DB._supabase.removeChannel(this._channel);
     }
     this._channel = null;
     this._userId = null;
+    this._member = null;
     this._users = [];
+    this._retryCount = 0;
     this.render();
   },
 
