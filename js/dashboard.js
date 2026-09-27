@@ -86,6 +86,7 @@ const Dashboard = {
   setTab(tab) {
     this.activeTab = tab === 'interactive' ? 'interactive' : 'summary';
     this.detail = null;
+    App.closeModal();
     this.refresh();
   },
 
@@ -99,6 +100,7 @@ const Dashboard = {
     this.startDate = start;
     this.endDate = end;
     this.detail = null;
+    App.closeModal();
     this.refresh();
   },
 
@@ -107,6 +109,7 @@ const Dashboard = {
     this.startDate = '';
     this.endDate = '';
     this.detail = null;
+    App.closeModal();
     this.refresh();
   },
 
@@ -232,6 +235,7 @@ const Dashboard = {
       this.endDate = '';
     }
     this.detail = null;
+    App.closeModal();
     this.refresh();
   },
 
@@ -243,18 +247,44 @@ const Dashboard = {
     this.sales = 'all';
     this.status = 'all';
     this.detail = null;
+    App.closeModal();
     this.refresh();
   },
 
   showDetails(type, value = '') {
+    const { info, tasks } = this._data();
+    const today = this._dateOnly(new Date());
+    let title = 'Semua Task Dalam Scope';
+    let description = `Task sesuai filter aktif · ${info.display}`;
+    let tone = 'neutral';
+    let filtered = tasks;
+
+    if (type === 'status') { title = `Pipeline: ${this._statusLabel(value)}`; description = `Task dengan status ${this._statusLabel(value)}`; filtered = tasks.filter(task => task.pipelineStatus === value); tone = value === 'done' ? 'success' : value === 'revisi' ? 'warning' : 'neutral'; }
+    else if (type === 'division') { title = `Divisi: ${value}`; description = `Task ${value} dalam filter aktif`; filtered = tasks.filter(task => task.division === value); }
+    else if (type === 'sales') { title = `Sales PIC: ${value}`; description = 'Request By (Sales) adalah owner tender'; filtered = tasks.filter(task => task.sales === value); }
+    else if (type === 'done-week') { title = 'Task Done'; description = `Selesai pada ${info.display}`; filtered = tasks.filter(task => this._inRange(this._doneAt(task), info)); tone = 'success'; }
+    else if (type === 'overdue') { title = 'Task Overdue'; description = 'Melewati target penyelesaian dan belum Done'; filtered = tasks.filter(task => task.targetDate && task.pipelineStatus !== 'done' && new Date(`${task.targetDate}T00:00:00`) < today); tone = 'danger'; }
+    else if (type === 'due-week') { title = 'Target Done'; description = `Target penyelesaian pada ${info.display}`; filtered = tasks.filter(task => task.targetDate && task.pipelineStatus !== 'done' && this._inRange(new Date(`${task.targetDate}T00:00:00`), info)); tone = 'warning'; }
+    else if (type === 'high') { title = 'Task High Priority'; description = 'Task aktif dengan prioritas tinggi'; filtered = tasks.filter(task => task.priority === 'High' && task.pipelineStatus !== 'done'); tone = 'danger'; }
+    else if (type === 'revisi') { title = 'Task Revisi'; description = 'Task yang membutuhkan revisi'; filtered = tasks.filter(task => task.pipelineStatus === 'revisi'); tone = 'warning'; }
+
+    filtered = filtered.slice().sort((a, b) => (a.targetDate || '9999-12-31').localeCompare(b.targetDate || '9999-12-31'));
     this.detail = { type, value };
-    this.refresh();
-    requestAnimationFrame(() => document.getElementById('dashboardDetail')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }));
+    const countLabel = filtered.length === 1 ? '1 task ditemukan' : `${filtered.length} task ditemukan`;
+    App.openModal(`<div class="dashboard-detail-modal" data-tone="${tone}">
+      <div class="modal-header dashboard-detail-modal-header">
+        <div><div class="dashboard-detail-modal-kicker"><span></span>Drill-down detail</div><h2 class="modal-title">${Utils.escapeHtml(title)}</h2><p>${Utils.escapeHtml(description)}</p></div>
+        <button class="modal-close" type="button" onclick="Dashboard.closeDetails()" aria-label="Tutup detail">×</button>
+      </div>
+      <div class="dashboard-detail-modal-summary"><span class="dashboard-detail-result-count">${countLabel}</span><span>${Utils.escapeHtml(info.display)}</span></div>
+      ${filtered.length ? `<div class="table-container dashboard-detail-table"><table><thead><tr><th>Task / Request</th><th>Divisi</th><th>Sales PIC</th><th>Status</th><th>Target</th><th>Done</th><th></th></tr></thead><tbody>${filtered.map(task => this._taskRow(task, info)).join('')}</tbody></table></div>` : `<div class="dashboard-empty">Tidak ada task pada pilihan ini.</div>`}
+      <div class="modal-footer dashboard-detail-modal-footer"><span>Klik <b>Open Task</b> untuk melihat detail task lengkap.</span><button class="btn btn-secondary btn-sm" type="button" onclick="Dashboard.closeDetails()">Tutup</button></div>
+    </div>`, 'wide dashboard-detail-modal-box');
   },
 
   closeDetails() {
     this.detail = null;
-    this.refresh();
+    App.closeModal();
   },
 
   _filterButton(label, key, value, active) {
@@ -275,54 +305,6 @@ const Dashboard = {
       <td data-label="Done">${doneAt ? Utils.formatDateShort(doneAt) : '—'}</td>
       <td data-label="Aksi"><button class="btn btn-secondary btn-xs" onclick="Dashboard.openTask('${task.id}')">Open Task</button></td>
     </tr>`;
-  },
-
-  _detailPanel(tasks, info) {
-    if (!this.detail) return '';
-    const { type, value } = this.detail;
-    const today = this._dateOnly(new Date());
-    let title = 'Semua Task Dalam Scope';
-    let filtered = tasks;
-
-    if (type === 'status') {
-      title = `Pipeline: ${Utils.capitalize(value.replace('_', ' '))}`;
-      filtered = tasks.filter(task => task.pipelineStatus === value);
-    } else if (type === 'division') {
-      title = `Divisi ${value}`;
-      filtered = tasks.filter(task => task.division === value);
-    } else if (type === 'sales') {
-      title = `Sales PIC: ${value}`;
-      filtered = tasks.filter(task => task.sales === value);
-    } else if (type === 'done-week') {
-      title = `Selesai pada periode ${info.display}`;
-      filtered = tasks.filter(task => this._inRange(this._doneAt(task), info));
-    } else if (type === 'overdue') {
-      title = 'Task Overdue';
-      filtered = tasks.filter(task => task.targetDate && task.pipelineStatus !== 'done' && new Date(`${task.targetDate}T00:00:00`) < today);
-    } else if (type === 'due-week') {
-      title = `Target selesai ${info.display}`;
-      filtered = tasks.filter(task => task.targetDate && task.pipelineStatus !== 'done' && this._inRange(new Date(`${task.targetDate}T00:00:00`), info));
-    } else if (type === 'high') {
-      title = 'High Priority';
-      filtered = tasks.filter(task => task.priority === 'High' && task.pipelineStatus !== 'done');
-    } else if (type === 'revisi') {
-      title = 'Task Revisi';
-      filtered = tasks.filter(task => task.pipelineStatus === 'revisi');
-    }
-
-    filtered = filtered.slice().sort((a, b) => {
-      const aTarget = a.targetDate || '9999-12-31';
-      const bTarget = b.targetDate || '9999-12-31';
-      return aTarget.localeCompare(bTarget);
-    });
-
-    return `<section id="dashboardDetail" class="card dashboard-detail-card">
-      <div class="card-header">
-        <div><h3 class="card-title">${Utils.escapeHtml(title)}</h3><span class="dashboard-detail-count">${filtered.length} task ditemukan</span></div>
-        <button class="btn btn-secondary btn-xs" onclick="Dashboard.closeDetails()">✕ Close</button>
-      </div>
-      ${filtered.length ? `<div class="table-container dashboard-detail-table"><table><thead><tr><th>Task / Request</th><th>Divisi</th><th>Sales PIC</th><th>Status</th><th>Target</th><th>Done</th><th></th></tr></thead><tbody>${filtered.map(task => this._taskRow(task, info)).join('')}</tbody></table></div>` : `<div class="dashboard-empty">Tidak ada task pada pilihan ini.</div>`}
-    </section>`;
   },
 
   openTask(taskId) {
@@ -524,8 +506,6 @@ const Dashboard = {
           </div>
         </section>
       </div>
-
-      ${this._detailPanel(tasks, info)}
 
       <div class="dash-grid-2">
         <section class="card dashboard-panel">
