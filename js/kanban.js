@@ -53,29 +53,14 @@ const Kanban = {
     ];
 
     const html = `
-      <div class="page-header">
-        <div>
-          <h1 class="page-title">Kanban Board</h1>
-          <p class="page-subtitle">Pipeline overview — drag & drop to update task status</p>
-        </div>
-        <div class="page-actions">
-          <button class="btn btn-primary" onclick="Kanban.quickAdd()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Quick Add
-          </button>
-        </div>
+      <div class="page-header workspace-page-header">
+        <div><div class="workspace-eyebrow">Delivery workflow</div><h1 class="page-title">Kanban Board</h1><p class="page-subtitle">${filteredTasks.length} task dalam tampilan <span>·</span> Drag & drop untuk memperbarui pipeline</p></div>
+        <div class="page-actions"><button class="btn btn-primary" onclick="Kanban.quickAdd()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Quick Add</button></div>
       </div>
 
-      <!-- Division filter tabs -->
-      <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap">
-        ${divs.map(d => `
-          <button class="filter-pill ${this.filterDiv===d.id?'active':''}"
-            style="border-color:${this.filterDiv===d.id?d.color:'var(--border)'};color:${this.filterDiv===d.id?d.color:'var(--text-secondary)'}"
-            onclick="Kanban.setDiv('${d.id}')">
-            ${d.label} <span style="font-weight:400;opacity:0.7">(${d.count})</span>
-          </button>
-        `).join('')}
-      </div>
+      <section class="workspace-toolbar kanban-toolbar"><div class="workspace-filter-block"><span class="workspace-filter-label">Division</span><div class="filter-pills">
+        ${divs.map(d => `<button class="filter-pill kanban-filter-pill ${this.filterDiv===d.id?'active':''}" style="--filter-color:${d.color}" onclick="Kanban.setDiv('${d.id}')">${d.label} <span>${d.count}</span></button>`).join('')}
+      </div></div><div class="kanban-toolbar-hint"><span></span> Drag task ke kolom pipeline tujuan</div></section>
 
       ${filteredTasks.length === 0 ? `
         <div class="empty-state">
@@ -85,43 +70,20 @@ const Kanban = {
           <button class="btn btn-primary" onclick="App.navigate('#tasks');setTimeout(()=>Tasks.openModal(),200)">Go to Tasks</button>
         </div>
       ` : `
-        <div class="kanban-wrapper" style="display:flex;flex-direction:row;gap:14px">
+        <div class="kanban-wrapper workspace-kanban-board">
           ${columns.map(col => {
             const colTasks = filteredTasks.filter(t => t.pipelineStatus === col.id);
             return `
-              <div class="kanban-column" style="flex:1;min-width:240px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;display:flex;flex-direction:column"
-                data-status="${col.id}"
-                ondragover="Kanban.handleDragOver(event)"
-                ondragleave="Kanban.handleDragLeave(event)"
-                ondrop="Kanban.handleDrop(event, '${col.id}')">
-                <div class="kanban-col-header" style="border-bottom:2px solid ${col.borderColor};margin-bottom:10px;padding-bottom:10px">
-                  <span class="kanban-col-title" style="color:${col.color};font-size:0.82rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px">${col.title}</span>
-                  <span style="font-size:0.72rem;color:var(--text-muted);background:var(--bg-tertiary);padding:2px 8px;border-radius:10px">${colTasks.length}</span>
-                </div>
-                <div class="kanban-cards" style="display:flex;flex-direction:column;gap:7px;min-height:60px;flex:1">
+              <div class="kanban-column workspace-kanban-column" style="--pipeline-color:${col.color}" data-status="${col.id}" ondragover="Kanban.handleDragOver(event)" ondragleave="Kanban.handleDragLeave(event)" ondrop="Kanban.handleDrop(event, '${col.id}')">
+                <div class="kanban-col-header workspace-kanban-header"><div><span class="kanban-col-title">${col.title}</span><span class="workspace-kanban-caption">${col.id === 'done' ? 'Completed' : col.id === 'revisi' ? 'Needs revision' : 'Active queue'}</span></div><span class="workspace-kanban-count">${colTasks.length}</span></div>
+                <div class="kanban-cards workspace-kanban-cards">
                   ${colTasks.map(t => {
                     const req = requests.find(r => r.id === t.requestId);
                     const divColor = getDivColor(req?.division);
                     const cycleTime = Utils.calcCycleTime(t.pipelineHistory);
-                    return `
-                      <div class="kanban-card" style="border-left:3px solid ${divColor};padding:8px 10px"
-                        data-task-id="${t.id}"
-                        draggable="true"
-                        ondragstart="Kanban.handleDragStart(event)"
-                        ondragend="Kanban.handleDragEnd(event)"
-                        onclick="Kanban.viewTask('${t.id}')">
-                        <div style="font-weight:600;font-size:0.78rem;margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${Utils.escapeHtml(t.subjectTask)}</div>
-                        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-                          <span class="badge ${Utils.divClass(req?.division)}" style="font-size:0.6rem">${req?.division||'—'}</span>
-                          ${t.priority==='High'?`<span style="font-size:0.6rem;color:var(--red);font-weight:600">⚠</span>`:''}
-                          ${t.category?Utils.catBadge(t.category):''}
-                          ${t.targetDate?this.targetBadge(t):''}
-                          ${cycleTime?`<span style="font-size:0.62rem;color:var(--text-muted)">⏱ ${Utils.formatDuration(cycleTime)}</span>`:''}
-                        </div>
-                      </div>
-                    `;
+                    return `<div class="kanban-card workspace-kanban-card" style="--division-color:${divColor}" data-task-id="${t.id}" draggable="true" ondragstart="Kanban.handleDragStart(event)" ondragend="Kanban.handleDragEnd(event)" onclick="Kanban.viewTask('${t.id}')"><div class="workspace-kanban-card-title">${Utils.escapeHtml(t.subjectTask)}</div><div class="workspace-kanban-card-meta"><span class="badge ${Utils.divClass(req?.division)}">${req?.division||'—'}</span>${t.priority==='High'?`<span class="workspace-kanban-priority">High</span>`:''}${t.category?Utils.catBadge(t.category):''}</div><div class="workspace-kanban-card-footer">${t.targetDate?this.targetBadge(t):'<span>Tanpa target</span>'}${cycleTime?`<span>${Utils.formatDuration(cycleTime)}</span>`:''}</div></div>`;
                   }).join('')}
-                  ${colTasks.length===0?'<div class="kanban-empty" style="text-align:center;color:var(--text-muted);padding:12px;font-size:0.74rem">Drop here</div>':''}
+                  ${colTasks.length===0?'<div class="kanban-empty workspace-kanban-empty">Drop task here</div>':''}
                 </div>
               </div>
             `;

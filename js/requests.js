@@ -50,10 +50,10 @@ const Requests = {
     ];
 
     const html = `
-      <div class="page-header">
-        <div>
+      <div class="page-header workspace-page-header">
+        <div><div class="workspace-eyebrow">Tender intake</div>
           <h1 class="page-title">Requests</h1>
-          <p class="page-subtitle">Incoming estimation requests from 3 divisions</p>
+          <p class="page-subtitle">${openCount} tender terbuka <span>·</span> Kelola request dari seluruh divisi</p>
         </div>
         <div class="page-actions">
           <button class="btn btn-primary" onclick="Requests.openModal()">
@@ -63,22 +63,20 @@ const Requests = {
         </div>
       </div>
 
-      <div class="filter-pills">
-        ${divPills.map(d => `
-          <button class="filter-pill ${this.filterDiv===d.id?'active':''}"
-            style="${d.style}" onclick="Requests.setFilter('${d.id}')">${d.label}</button>
-        `).join('')}
-        <span style="flex:1"></span>
-        <button class="filter-pill ${this.filterStatus==='all'?'active':''}" onclick="Requests.setStatusFilter('all')">All Status</button>
-        <button class="filter-pill ${this.filterStatus==='open'?'active':''}" onclick="Requests.setStatusFilter('open')">Open</button>
-        <button class="filter-pill ${this.filterStatus==='win'?'active':''}" onclick="Requests.setStatusFilter('win')">Win</button>
-        <button class="filter-pill ${this.filterStatus==='lose'?'active':''}" onclick="Requests.setStatusFilter('lose')">Lose/Drop</button>
-      </div>
-
-      <div class="search-bar">
-        <input type="text" class="search-input" placeholder="🔍 Cari subject, sales, customer..." id="reqSearchInput"
-          value="${Utils.escapeHtml(this.searchText)}">
-      </div>
+      <section class="workspace-toolbar requests-toolbar">
+        <div class="workspace-filter-block"><span class="workspace-filter-label">Division</span><div class="filter-pills">
+          ${divPills.map(d => `<button class="filter-pill ${this.filterDiv===d.id?'active':''}" style="${d.style}" onclick="Requests.setFilter('${d.id}')">${d.label}</button>`).join('')}
+        </div></div>
+        <div class="workspace-filter-block"><span class="workspace-filter-label">Status</span><div class="filter-pills">
+          <button class="filter-pill ${this.filterStatus==='all'?'active':''}" onclick="Requests.setStatusFilter('all')">All</button>
+          <button class="filter-pill ${this.filterStatus==='open'?'active':''}" onclick="Requests.setStatusFilter('open')">Open</button>
+          <button class="filter-pill ${this.filterStatus==='win'?'active':''}" onclick="Requests.setStatusFilter('win')">Win</button>
+          <button class="filter-pill ${this.filterStatus==='lose'?'active':''}" onclick="Requests.setStatusFilter('lose')">Lose / Drop</button>
+        </div></div>
+        <div class="search-bar workspace-search">
+          <input type="text" class="search-input" placeholder="Cari subject, sales, customer..." id="reqSearchInput" value="${Utils.escapeHtml(this.searchText)}">
+        </div>
+      </section>
 
       ${reqs.length === 0 ? `
         <div class="empty-state">
@@ -87,7 +85,9 @@ const Requests = {
           <div class="empty-state-desc">${Storage.getRequests().length===0?'Start by creating your first estimation request.':'Try adjusting your filters.'}</div>
         </div>
       ` : `
-        <div class="table-container">
+        <div class="workspace-table-card">
+          <div class="workspace-table-meta"><span>${reqs.length} request ditampilkan</span><span>Klik subject untuk membuka task terkait</span></div>
+          <div class="table-container workspace-table-container">
           <table>
             <thead>
               <tr>
@@ -100,6 +100,7 @@ const Requests = {
               ${reqs.map(r => this.renderRow(r)).join('')}
             </tbody>
           </table>
+          </div>
         </div>
       `}
     `;

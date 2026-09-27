@@ -61,70 +61,23 @@ const Tasks = {
     ];
 
     const html = `
-      <div class="page-header">
-        <div>
-          <h1 class="page-title">Task Breakdown</h1>
-          <p class="page-subtitle">All tasks across requests — ${tasks.length} of ${Storage.getTasks().length}</p>
-        </div>
-        <div class="page-actions">
-          <button class="btn btn-primary" onclick="Tasks.openModal()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Add Task
-          </button>
-        </div>
+      <div class="page-header workspace-page-header">
+        <div><div class="workspace-eyebrow">Delivery workflow</div><h1 class="page-title">Task Breakdown</h1><p class="page-subtitle">${tasks.length} dari ${Storage.getTasks().length} task sesuai filter <span>·</span> ${activeCount} masih aktif</p></div>
+        <div class="page-actions"><button class="btn btn-primary" onclick="Tasks.openModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add Task</button></div>
       </div>
 
-      <div class="filter-pills">
-        ${divPills.map(d => `<button class="filter-pill ${this.filterDiv===d.id?'active':''}" style="${d.style}" onclick="Tasks.filterDiv='${d.id}';Tasks.refresh()">${d.label}</button>`).join('')}
-        <span style="flex:1"></span>
-        <div style="position:relative;min-width:200px;max-width:280px">
-          ${Utils.combobox({
-            id: 'taskFilterReqCb',
-            name: 'tasksFilterRequest',
-            options: [
-              { value: 'all', label: '📋 All Requests' },
-              ...requests.slice().sort((a,b)=>(a.subject||'').localeCompare(b.subject||'','id')).map(r => ({
-                value: r.id,
-                label: `${Utils.truncate(r.subject||'Untitled',40)} [${r.division}]`,
-                group: r.division
-              }))
-            ],
-            selected: this.filterRequest || 'all',
-            placeholder: 'Cari request…',
-            onChange: "Tasks.filterRequest=v;sessionStorage.setItem('tasksFilterRequest',v);Tasks.refresh()"
-          })}
-        </div>
-        <select class="form-select" style="width:auto;padding:6px 10px;font-size:0.78rem" onchange="Tasks.filterCat=this.value;Tasks.refresh()">
-          ${Utils.catOptions(this.filterCat === 'all' ? '' : this.filterCat).replace('— Semua Kategori —','📂 All Category')}
-        </select>
-        <button class="filter-pill ${this.filterPipe==='all'?'active':''}" onclick="Tasks.filterPipe='all';Tasks.refresh()">All</button>
-        <button class="filter-pill ${this.filterPipe==='todo'?'active':''}" onclick="Tasks.filterPipe='todo';Tasks.refresh()">To Do</button>
-        <button class="filter-pill ${this.filterPipe==='in_progress'?'active':''}" onclick="Tasks.filterPipe='in_progress';Tasks.refresh()">In Progress</button>
-        <button class="filter-pill ${this.filterPipe==='review'?'active':''}" onclick="Tasks.filterPipe='review';Tasks.refresh()">Review</button>
-        <button class="filter-pill ${this.filterPipe==='done'?'active':''}" onclick="Tasks.filterPipe='done';Tasks.refresh()">Done</button>
-        <button class="filter-pill ${this.filterPipe==='revisi'?'active':''}" onclick="Tasks.filterPipe='revisi';Tasks.refresh()">Revisi</button>
-        <span style="margin:0 4px;color:var(--border);font-size:0.7rem">|</span>
-        <button class="filter-pill ${this.filterScope==='all'?'active':''}" onclick="Tasks.filterScope='all';Tasks.refresh()">🔍 All</button>
-        <button class="filter-pill ${this.filterScope==='PL'?'active':''}" style="border-color:${this.filterScope==='PL'?'var(--accent)':'var(--border)'}" onclick="Tasks.filterScope='PL';Tasks.refresh()">PL</button>
-        <button class="filter-pill ${this.filterScope==='PS'?'active':''}" style="border-color:${this.filterScope==='PS'?'var(--accent)':'var(--border)'}" onclick="Tasks.filterScope='PS';Tasks.refresh()">PS</button>
-        <button class="filter-pill ${this.filterScope==='MS'?'active':''}" style="border-color:${this.filterScope==='MS'?'var(--accent)':'var(--border)'}" onclick="Tasks.filterScope='MS';Tasks.refresh()">MS</button>
-      </div>
-
-      <div class="search-bar">
-        <input type="text" class="search-input" placeholder="🔍 Cari task, request, sales..." id="taskSearchInput" value="${Utils.escapeHtml(this.searchText)}">
-      </div>
+      <section class="workspace-toolbar tasks-toolbar">
+        <div class="workspace-filter-block"><span class="workspace-filter-label">Division</span><div class="filter-pills">${divPills.map(d => `<button class="filter-pill ${this.filterDiv===d.id?'active':''}" style="${d.style}" onclick="Tasks.filterDiv='${d.id}';Tasks.refresh()">${d.label}</button>`).join('')}</div></div>
+        <div class="workspace-filter-block"><span class="workspace-filter-label">Pipeline</span><div class="filter-pills"><button class="filter-pill ${this.filterPipe==='all'?'active':''}" onclick="Tasks.filterPipe='all';Tasks.refresh()">All</button><button class="filter-pill ${this.filterPipe==='todo'?'active':''}" onclick="Tasks.filterPipe='todo';Tasks.refresh()">To Do</button><button class="filter-pill ${this.filterPipe==='in_progress'?'active':''}" onclick="Tasks.filterPipe='in_progress';Tasks.refresh()">In Progress</button><button class="filter-pill ${this.filterPipe==='review'?'active':''}" onclick="Tasks.filterPipe='review';Tasks.refresh()">Review</button><button class="filter-pill ${this.filterPipe==='done'?'active':''}" onclick="Tasks.filterPipe='done';Tasks.refresh()">Done</button><button class="filter-pill ${this.filterPipe==='revisi'?'active':''}" onclick="Tasks.filterPipe='revisi';Tasks.refresh()">Revisi</button></div></div>
+        <div class="workspace-filter-block workspace-filter-select"><span class="workspace-filter-label">Request & category</span><div class="workspace-select-row"><div class="workspace-combobox">${Utils.combobox({id:'taskFilterReqCb',name:'tasksFilterRequest',options:[{value:'all',label:'All Requests'},...requests.slice().sort((a,b)=>(a.subject||'').localeCompare(b.subject||'','id')).map(r=>({value:r.id,label:`${Utils.truncate(r.subject||'Untitled',40)} [${r.division}]`,group:r.division}))],selected:this.filterRequest||'all',placeholder:'Cari request…',onChange:"Tasks.filterRequest=v;sessionStorage.setItem('tasksFilterRequest',v);Tasks.refresh()"})}</div><select class="form-select workspace-category-select" onchange="Tasks.filterCat=this.value;Tasks.refresh()">${Utils.catOptions(this.filterCat === 'all' ? '' : this.filterCat).replace('— Semua Kategori —','All Category')}</select></div></div>
+        <div class="workspace-filter-block"><span class="workspace-filter-label">Scope</span><div class="filter-pills"><button class="filter-pill ${this.filterScope==='all'?'active':''}" onclick="Tasks.filterScope='all';Tasks.refresh()">All</button><button class="filter-pill ${this.filterScope==='PL'?'active':''}" onclick="Tasks.filterScope='PL';Tasks.refresh()">PL</button><button class="filter-pill ${this.filterScope==='PS'?'active':''}" onclick="Tasks.filterScope='PS';Tasks.refresh()">PS</button><button class="filter-pill ${this.filterScope==='MS'?'active':''}" onclick="Tasks.filterScope='MS';Tasks.refresh()">MS</button></div></div>
+        <div class="search-bar workspace-search"><input type="text" class="search-input" placeholder="Cari task, request, sales..." id="taskSearchInput" value="${Utils.escapeHtml(this.searchText)}"></div>
+      </section>
 
       ${activeRequest ? `
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:rgba(79,156,249,0.08);border:1px solid rgba(79,156,249,0.3);border-radius:10px;padding:10px 14px;margin-bottom:12px;flex-wrap:wrap">
-          <div>
-            <div style="font-size:0.72rem;color:var(--accent);font-weight:700;letter-spacing:0.4px">FILTERED BY REQUEST</div>
-            <div style="font-weight:600;font-size:0.95rem">${Utils.escapeHtml(activeRequest.subject||'—')}</div>
-            <div style="font-size:0.72rem;color:var(--text-muted)">${activeRequest.division||'—'} · ${Utils.escapeHtml(activeRequest.customer||'')} · ${Utils.escapeHtml(activeRequest.endUser||'')} · ${Utils.formatDateShort(activeRequest.date)}</div>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span class="gantt-stat">${tasks.length} task</span>
-            <button class="btn btn-xs btn-secondary" onclick="Tasks.filterRequest='all';sessionStorage.removeItem('tasksFilterRequest');Tasks.refresh()">✕ Clear Filter</button>
-          </div>
+        <div class="workspace-context-card">
+          <div><div class="workspace-context-kicker">Filtered by request</div><div class="workspace-context-title">${Utils.escapeHtml(activeRequest.subject||'—')}</div><div class="workspace-context-meta">${activeRequest.division||'—'} <span>·</span> ${Utils.escapeHtml(activeRequest.customer||'')} <span>·</span> ${Utils.escapeHtml(activeRequest.endUser||'')} <span>·</span> ${Utils.formatDateShort(activeRequest.date)}</div></div>
+          <div class="workspace-context-actions"><span class="workspace-context-count">${tasks.length} task</span><button class="btn btn-xs btn-secondary" onclick="Tasks.filterRequest='all';sessionStorage.removeItem('tasksFilterRequest');Tasks.refresh()">Clear filter</button></div>
         </div>
       ` : ''}
 
@@ -136,7 +89,9 @@ const Tasks = {
           <button class="btn btn-primary" onclick="Tasks.openModal()">Add Task</button>
         </div>
       ` : `
-        <div class="table-container">
+        <div class="workspace-table-card">
+          <div class="workspace-table-meta"><span>${tasks.length} task ditampilkan</span><span>Gunakan header kolom untuk mengurutkan data</span></div>
+          <div class="table-container workspace-table-container">
           <table>
             <thead>
               <tr>
@@ -150,6 +105,7 @@ const Tasks = {
               ${tasks.map((t,i) => this.renderRow(t,i)).join('')}
             </tbody>
           </table>
+          </div>
         </div>
       `}
     `;
