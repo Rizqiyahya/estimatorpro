@@ -112,8 +112,8 @@ const Dashboard = {
 
   _dashboardTabs() {
     return `<div class="dashboard-tabs" role="tablist" aria-label="Dashboard mode">
-      <button class="dashboard-tab ${this.activeTab === 'summary' ? 'active' : ''}" role="tab" aria-selected="${this.activeTab === 'summary'}" onclick="Dashboard.setTab('summary')">Executive Summary <small>All time</small></button>
-      <button class="dashboard-tab ${this.activeTab === 'interactive' ? 'active' : ''}" role="tab" aria-selected="${this.activeTab === 'interactive'}" onclick="Dashboard.setTab('interactive')">Interactive Analysis <small>Filter & detail</small></button>
+      <button class="dashboard-tab ${this.activeTab === 'summary' ? 'active' : ''}" role="tab" aria-selected="${this.activeTab === 'summary'}" onclick="Dashboard.setTab('summary')"><span>Executive Summary</span><small>Portfolio overview</small></button>
+      <button class="dashboard-tab ${this.activeTab === 'interactive' ? 'active' : ''}" role="tab" aria-selected="${this.activeTab === 'interactive'}" onclick="Dashboard.setTab('interactive')"><span>Interactive Analysis</span><small>Weekly review</small></button>
     </div>`;
   },
 
@@ -155,12 +155,12 @@ const Dashboard = {
     const requestStatus = [{ value:win, label:'Win' }, { value:open, label:'Open' }, { value:lose, label:'Lose' }];
     const requestColors = ['var(--green)', 'var(--blue)', 'var(--red)'];
 
-    return `<div class="dashboard-summary-head"><div><h2>Executive Summary</h2><p>Data keseluruhan hingga ${new Date().toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' })}</p></div><span>All time</span></div>
-      <div class="kpi-grid">
-        <div class="kpi-card"><div class="kpi-label">Total Requests</div><div class="kpi-value">${totalReq}</div><div class="kpi-sub">+${newThisWeek} this week</div></div>
-        <div class="kpi-card"><div class="kpi-label">Win Rate</div><div class="kpi-value" style="color:${winRate >= 50 ? 'var(--green)' : 'var(--orange)'}">${winRate}%</div><div class="kpi-sub">${win} Won · ${lose} Lost · <span style="color:var(--blue)">${open} Open</span></div></div>
-        <div class="kpi-card"><div class="kpi-label">Active Pipeline</div><div class="kpi-value">${active}</div><div class="kpi-sub">${done} Done · ${revisi} Revisi · ${highPrio} <span style="color:var(--red)">High</span></div><div class="kpi-sub" style="margin-top:3px;font-size:.66rem">${scope.map(s => `<span style="color:${s.color};font-weight:600">${s.key} ${s.active}</span>`).join(' · ')} <span style="color:var(--text-muted)">aktif</span>${overdue ? ` · <span style="color:var(--red);font-weight:600">⚠ ${overdue} overdue</span>` : ''}</div></div>
-        <div class="kpi-card"><div class="kpi-label">Avg. Cycle Time ⓘ</div><div class="kpi-value" style="font-size:1.6rem">${Utils.formatDuration(avgCycle)}</div><div class="kpi-sub">median ${Utils.formatDuration(medianCycle)} · dari ${cycleTimes.length} task</div><div class="kpi-sub" style="font-size:.66rem">${stuck ? `<span style="color:var(--orange)">⚠ ${stuck} stuck >3d</span>` : 'No stuck'}</div></div>
+    return `<div class="dashboard-summary-head"><div><div class="dashboard-eyebrow">Portfolio overview</div><h2>Executive Summary</h2><p>Data keseluruhan hingga ${new Date().toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' })}</p></div><span class="dashboard-head-status"><i></i>All time</span></div>
+      <div class="kpi-grid dashboard-kpi-grid">
+        <div class="kpi-card dashboard-kpi-card"><div class="kpi-card-head"><div class="kpi-label">Total Requests</div><span class="kpi-card-marker neutral">All</span></div><div class="kpi-value">${totalReq}</div><div class="kpi-sub"><span class="kpi-trend neutral">${newThisWeek ? `+${newThisWeek}` : '0'}</span> tender masuk 7 hari terakhir</div></div>
+        <div class="kpi-card dashboard-kpi-card"><div class="kpi-card-head"><div class="kpi-label">Win Rate</div><span class="kpi-card-marker success">${win + lose} decided</span></div><div class="kpi-value" style="color:${winRate >= 50 ? 'var(--green)' : 'var(--orange)'}">${winRate}%</div><div class="kpi-sub"><span style="color:var(--green)">${win} Won</span><span class="kpi-separator">·</span><span style="color:var(--red)">${lose} Lost</span><span class="kpi-separator">·</span><span style="color:var(--blue)">${open} Open</span></div></div>
+        <div class="kpi-card dashboard-kpi-card"><div class="kpi-card-head"><div class="kpi-label">Active Pipeline</div><span class="kpi-card-marker ${overdue ? 'danger' : 'neutral'}">${overdue ? `${overdue} overdue` : 'On track'}</span></div><div class="kpi-value">${active}</div><div class="kpi-sub">${done} Done <span class="kpi-separator">·</span> ${revisi} Revisi <span class="kpi-separator">·</span> ${highPrio} <span style="color:var(--red)">High</span></div><div class="kpi-scope-row">${scope.map(s => `<span style="color:${s.color}">${s.key} <b>${s.active}</b></span>`).join('')}</div></div>
+        <div class="kpi-card dashboard-kpi-card"><div class="kpi-card-head"><div class="kpi-label">Avg. Cycle Time</div><span class="kpi-card-marker ${stuck ? 'warning' : 'success'}">${stuck ? `${stuck} stuck` : 'Healthy'}</span></div><div class="kpi-value kpi-duration">${Utils.formatDuration(avgCycle)}</div><div class="kpi-sub">Median ${Utils.formatDuration(medianCycle)} <span class="kpi-separator">·</span> ${cycleTimes.length} task terukur</div><div class="kpi-footnote">${stuck ? 'Perlu review task tanpa perubahan >3 hari.' : 'Tidak ada task stagnan lebih dari 3 hari.'}</div></div>
       </div>
       <div class="dash-grid-211">
         <section class="card"><div class="card-header"><h3 class="card-title">Pipeline Status</h3><span class="dashboard-total">${totalTasks} total tasks</span></div><div class="pipeline-bar">${pipeItems.map(item => pipes[item.key] ? `<div class="pipeline-segment ${item.key}" style="width:${pipes[item.key] / totalPipe * 100}%" title="${item.label}: ${pipes[item.key]}"></div>` : '').join('')}</div>${pipeItems.map(item => `<div class="pipe-legend-row"><div style="display:flex;align-items:center;gap:10px"><span class="pipe-dot" style="background:${item.color}"></span><span class="pipe-label">${item.label}</span></div><span class="pipe-count">${pipes[item.key]}</span></div>`).join('')}</section>
@@ -478,11 +478,12 @@ const Dashboard = {
 
     return `
       <div class="dashboard-analysis-head">
-        <div><h2>Interactive Analysis</h2><p>Periode analisis · ${info.display}</p></div>
-        <div class="dashboard-analysis-actions"><span class="dashboard-period-badge">${info.label}</span><button class="btn btn-primary btn-sm dashboard-export-btn" onclick="Dashboard.exportReport()">⇩ Export Excel Report</button></div>
+        <div><div class="dashboard-eyebrow">Weekly review workspace</div><h2>Interactive Analysis</h2><p>Periode analisis <span>·</span> ${info.display}</p></div>
+        <div class="dashboard-analysis-actions"><span class="dashboard-period-badge"><i></i>${info.label}</span><button class="btn btn-primary btn-sm dashboard-export-btn" onclick="Dashboard.exportReport()">⇩ <span>Export Excel</span></button></div>
       </div>
 
       <section class="dashboard-filters card">
+        <div class="dashboard-filter-intro"><span class="dashboard-filter-kicker">Scope analysis</span><span class="dashboard-filter-summary">Atur periode dan fokus review</span></div>
         <div class="dashboard-filter-group"><span class="dashboard-filter-label">Shortcut periode</span>
           ${this._filterButton('Minggu ini', 'period', 'current', !this.startDate && info.period === 'current')}
           ${this._filterButton('Minggu lalu', 'period', 'previous', !this.startDate && info.period === 'previous')}
@@ -501,20 +502,20 @@ const Dashboard = {
         <button class="btn btn-secondary btn-xs dashboard-reset" onclick="Dashboard.resetFilters()">Reset</button>
       </section>
 
-      <div class="kpi-grid dashboard-kpis">
-        <button class="kpi-card dashboard-kpi-button" onclick="Dashboard.showDetails('all')"><div class="kpi-label">Task Dalam Scope</div><div class="kpi-value">${tasks.length}</div><div class="kpi-sub">${scopedRequests.length} tender · klik untuk detail</div></button>
-        <button class="kpi-card dashboard-kpi-button" onclick="Dashboard.showDetails('done-week')"><div class="kpi-label">Done Periode Ini</div><div class="kpi-value" style="color:var(--green)">${doneThisPeriod.length}</div><div class="kpi-sub">Masuk Done ${info.display}</div></button>
-        <button class="kpi-card dashboard-kpi-button" onclick="Dashboard.showDetails('overdue')"><div class="kpi-label">Perlu Tindak Lanjut</div><div class="kpi-value" style="color:${overdue.length ? 'var(--red)' : 'var(--green)'}">${overdue.length}</div><div class="kpi-sub">Overdue dan belum Done</div></button>
-        <button class="kpi-card dashboard-kpi-button" onclick="Dashboard.showDetails('status','done')"><div class="kpi-label">Progress Saat Ini</div><div class="kpi-value" style="color:var(--accent)">${completionRate}%</div><div class="kpi-sub">${counts.done} Done · ${active} aktif</div></button>
+      <div class="kpi-grid dashboard-kpis dashboard-kpi-grid">
+        <button class="kpi-card dashboard-kpi-card dashboard-kpi-button" onclick="Dashboard.showDetails('all')"><div class="kpi-card-head"><div class="kpi-label">Task Dalam Scope</div><span class="dashboard-kpi-action">Detail ↗</span></div><div class="kpi-value">${tasks.length}</div><div class="kpi-sub">${scopedRequests.length} tender dalam filter aktif</div></button>
+        <button class="kpi-card dashboard-kpi-card dashboard-kpi-button" onclick="Dashboard.showDetails('done-week')"><div class="kpi-card-head"><div class="kpi-label">Done Periode Ini</div><span class="kpi-card-marker success">Completed</span></div><div class="kpi-value" style="color:var(--green)">${doneThisPeriod.length}</div><div class="kpi-sub">Selesai pada ${info.display}</div></button>
+        <button class="kpi-card dashboard-kpi-card dashboard-kpi-button" onclick="Dashboard.showDetails('overdue')"><div class="kpi-card-head"><div class="kpi-label">Perlu Tindak Lanjut</div><span class="kpi-card-marker ${overdue.length ? 'danger' : 'success'}">${overdue.length ? 'Needs review' : 'Clear'}</span></div><div class="kpi-value" style="color:${overdue.length ? 'var(--red)' : 'var(--green)'}">${overdue.length}</div><div class="kpi-sub">Task overdue dan belum Done</div></button>
+        <button class="kpi-card dashboard-kpi-card dashboard-kpi-button" onclick="Dashboard.showDetails('status','done')"><div class="kpi-card-head"><div class="kpi-label">Progress Saat Ini</div><span class="dashboard-kpi-action">Detail ↗</span></div><div class="kpi-value" style="color:var(--accent)">${completionRate}%</div><div class="kpi-sub">${counts.done} Done <span class="kpi-separator">·</span> ${active} masih aktif</div></button>
       </div>
 
       <div class="dash-grid-2">
-        <section class="card">
-          <div class="card-header"><div><h3 class="card-title">Pipeline Status</h3><span class="dashboard-card-hint">Klik status untuk membuka daftar task</span></div><span class="dashboard-total">${tasks.length} task</span></div>
-          <div class="dashboard-pipeline-list">${statusItems.map(item => `<button class="dashboard-pipeline-row" onclick="Dashboard.showDetails('status','${item.key}')"><span class="pipe-dot" style="background:${item.color}"></span><span>${item.label}</span><span class="dashboard-pipeline-count">${counts[item.key]}</span><span class="dashboard-pipeline-percent">${tasks.length ? Math.round((counts[item.key] / tasks.length) * 100) : 0}%</span></button>`).join('')}</div>
+        <section class="card dashboard-panel">
+          <div class="card-header dashboard-panel-header"><div><span class="dashboard-section-index">01</span><h3 class="card-title">Pipeline Status</h3><span class="dashboard-card-hint">Klik status untuk membuka daftar task</span></div><span class="dashboard-total">${tasks.length} task</span></div>
+          <div class="dashboard-pipeline-list">${statusItems.map(item => `<button class="dashboard-pipeline-row" onclick="Dashboard.showDetails('status','${item.key}')"><span class="pipe-dot" style="background:${item.color}"></span><span>${item.label}</span><span class="dashboard-pipeline-meter"><i style="width:${tasks.length ? (counts[item.key] / tasks.length) * 100 : 0}%;background:${item.color}"></i></span><span class="dashboard-pipeline-count">${counts[item.key]}</span><span class="dashboard-pipeline-percent">${tasks.length ? Math.round((counts[item.key] / tasks.length) * 100) : 0}%</span></button>`).join('')}</div>
         </section>
-        <section class="card">
-          <div class="card-header"><div><h3 class="card-title">⚠ Perlu Perhatian</h3><span class="dashboard-card-hint">Prioritas untuk dibahas dalam weekly review</span></div></div>
+        <section class="card dashboard-panel dashboard-attention-panel">
+          <div class="card-header dashboard-panel-header"><div><span class="dashboard-section-index attention">02</span><h3 class="card-title">Perlu Perhatian</h3><span class="dashboard-card-hint">Prioritas untuk dibahas dalam weekly review</span></div></div>
           <div class="dashboard-attention-grid">
             <button class="dashboard-attention danger" onclick="Dashboard.showDetails('overdue')"><strong>${overdue.length}</strong><span>Overdue</span></button>
             <button class="dashboard-attention warning" onclick="Dashboard.showDetails('due-week')"><strong>${dueInPeriod.length}</strong><span>Target minggu ini</span></button>
@@ -527,21 +528,21 @@ const Dashboard = {
       ${this._detailPanel(tasks, info)}
 
       <div class="dash-grid-2">
-        <section class="card">
-          <div class="card-header"><div><h3 class="card-title">Progress per Divisi</h3><span class="dashboard-card-hint">Klik baris untuk melihat task divisi</span></div></div>
+        <section class="card dashboard-panel">
+          <div class="card-header dashboard-panel-header"><div><span class="dashboard-section-index">03</span><h3 class="card-title">Progress per Divisi</h3><span class="dashboard-card-hint">Klik baris untuk melihat task divisi</span></div></div>
           <div class="dashboard-breakdown">${divisionStats.map(item => {
             const percent = tasks.length ? Math.round((item.done / item.total) * 100) || 0 : 0;
             return `<button class="dashboard-breakdown-row" onclick="Dashboard.showDetails('division','${item.division}')"><div class="dashboard-breakdown-head"><span style="color:${Utils.divColor(item.division)}">${item.division}</span><strong>${item.total} task</strong></div><div class="dashboard-progress-track"><span style="width:${(item.total / maxDivision) * 100}%;background:${Utils.divColor(item.division)}"></span></div><div class="dashboard-breakdown-meta"><span>${item.done} Done · ${item.active} aktif</span><span class="${item.overdue ? 'dash-overdue-text' : ''}">${item.overdue ? `⚠ ${item.overdue} overdue` : `${percent}% selesai`}</span></div></button>`;
           }).join('')}</div>
         </section>
-        <section class="card">
-          <div class="card-header"><div><h3 class="card-title">Progress per Sales PIC</h3><span class="dashboard-card-hint">Request By (Sales) adalah owner tender</span></div></div>
+        <section class="card dashboard-panel">
+          <div class="card-header dashboard-panel-header"><div><span class="dashboard-section-index">04</span><h3 class="card-title">Progress per Sales PIC</h3><span class="dashboard-card-hint">Request By (Sales) adalah owner tender</span></div></div>
           ${salesStats.length ? `<div class="dashboard-sales-list">${salesStats.map(item => `<button class="dashboard-sales-row" onclick="Dashboard.showDetails('sales','${Utils.escapeHtml(item.sales).replace(/'/g, '&#39;')}')"><span class="dashboard-sales-name">${Utils.escapeHtml(item.sales)}</span><span class="dashboard-sales-meta"><b>${item.done}</b> Done · ${item.active} aktif${item.overdue ? ` · <em>⚠ ${item.overdue}</em>` : ''}</span><span class="dashboard-sales-total">${item.total}</span></button>`).join('')}</div>` : `<div class="dashboard-empty">Belum ada Sales PIC pada task yang difilter.</div>`}
         </section>
       </div>
 
-      <section class="card">
-        <div class="card-header"><div><h3 class="card-title">Aktivitas pada Periode</h3><span class="dashboard-card-hint">Perubahan task ${info.display}</span></div></div>
+      <section class="card dashboard-panel dashboard-activity-panel">
+        <div class="card-header dashboard-panel-header"><div><span class="dashboard-section-index">05</span><h3 class="card-title">Aktivitas pada Periode</h3><span class="dashboard-card-hint">Perubahan task ${info.display}</span></div></div>
         ${recent.length ? `<div class="recent-list">${recent.map(task => `<button class="recent-row dashboard-recent-button" onclick="Dashboard.openTask('${task.id}')"><span class="recent-div" style="color:${Utils.divColor(task.division)}">${task.division}</span><span class="recent-subject">${Utils.escapeHtml(task.subjectTask || '—')}<small>${Utils.escapeHtml(task.sales)}</small></span>${Utils.pipeBadge(task.pipelineStatus)}<span class="recent-ago">${Utils.formatDateShort(task.updatedAt)}</span></button>`).join('')}</div>` : `<div class="dashboard-empty">Tidak ada pembaruan task pada periode ini.</div>`}
       </section>`;
   },
