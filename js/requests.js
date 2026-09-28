@@ -24,6 +24,11 @@ const Requests = {
 
   render() {
     let reqs = Storage.getRequests();
+    const viewRequestId = sessionStorage.getItem('viewRequestId');
+    if (viewRequestId) {
+      sessionStorage.removeItem('viewRequestId');
+      if (reqs.some(request => request.id === viewRequestId)) setTimeout(() => this.openModal(viewRequestId), 0);
+    }
 
     if (this.filterDiv !== 'all') reqs = reqs.filter(r => r.division === this.filterDiv);
     if (this.filterStatus !== 'all') reqs = reqs.filter(r => r.status === this.filterStatus);
@@ -130,8 +135,8 @@ const Requests = {
         <td data-label="No" style="font-family:var(--font-mono);font-size:0.74rem;color:var(--text-muted)">#${r.noId||'—'}</td>
         <td data-label="Date">${Utils.formatDateShort(r.date)}</td>
         <td data-label="Subject">
-          <strong style="cursor:pointer;color:var(--accent)" onclick="Requests.openTasksFor('${r.id}')">${Utils.escapeHtml(r.subject||'—')}</strong>
-          ${tc>0?`<div style="font-size:0.7rem;color:var(--text-muted)">${tc} tasks</div>`:''}
+          <button class="workspace-request-task-link" type="button" onclick="Requests.openTasksFor('${r.id}')" title="Lihat task dari request ini"><span>${Utils.escapeHtml(r.subject||'—')}</span><i aria-hidden="true">↗</i></button>
+          <div class="workspace-request-task-count">${tc} task${tc !== 1 ? 's' : ''} · lihat task</div>
         </td>
         <td data-label="Email">${Utils.escapeHtml(r.emailBy||'—')}</td>
         <td data-label="Sales">${Utils.escapeHtml(r.requestBy||'—')}</td>
@@ -144,7 +149,7 @@ const Requests = {
           ${tc === 0 ? `
             <button class="btn-icon btn-xs" style="color:var(--accent);font-weight:700" onclick="sessionStorage.setItem('addTaskForRequest','${r.id}');App.navigate('#tasks')" title="Add Task">➕</button>
           ` : `
-            <button class="btn-icon btn-xs" onclick="App.navigate('#tasks')" title="Tasks (${tc})">📋 <span style="font-size:0.6rem">${tc}</span></button>
+            <button class="btn-icon btn-xs" onclick="Requests.openTasksFor('${r.id}')" title="Tasks (${tc})">📋 <span style="font-size:0.6rem">${tc}</span></button>
           `}
           <button class="btn-icon btn-xs" style="color:var(--red)" onclick="Requests.confirmDelete('${r.id}')" title="Delete">🗑️</button>
         </td>
@@ -255,6 +260,12 @@ const Requests = {
     if (editId) { Storage.updateRequest(editId,d); Utils.showToast('Request updated','success'); }
     else { Storage.addRequest(d); Utils.showToast('Request created','success'); }
     App.closeModal(); this.refresh(); App.setActiveNav();
+  },
+
+  openTasksFor(requestId) {
+    if (!requestId) return;
+    sessionStorage.setItem('tasksFilterRequest', requestId);
+    App.navigate('#tasks');
   },
 
   confirmDelete(id) {

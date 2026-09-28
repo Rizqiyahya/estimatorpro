@@ -19,6 +19,8 @@ const Tasks = {
   },
 
   render() {
+    const persistedRequestFilter = sessionStorage.getItem('tasksFilterRequest') || 'all';
+    if (this.filterRequest !== persistedRequestFilter) this.filterRequest = persistedRequestFilter;
     let tasks = Storage.getTasks();
     const requests = Storage.getRequests();
 
@@ -143,8 +145,9 @@ const Tasks = {
         <td data-label="No" style="font-family:var(--font-mono);font-size:0.72rem;color:var(--text-muted)">#${i+1}</td>
         <td data-label="Date">${Utils.formatDateShort(t.date)}</td>
         <td data-label="Request">
-          <span class="badge ${Utils.divClass(req?.division)}" style="font-size:0.65rem">${req?.division||'—'}</span>
-          <div style="font-size:0.74rem;color:var(--text-secondary);margin-top:2px">${Utils.truncate(Utils.escapeHtml(t.subjectRequest||'—'),25)}</div>
+          <button class="workspace-request-link" type="button" onclick="Tasks.openRequest('${t.requestId}')" title="Buka request terkait">
+            <span>${Utils.truncate(Utils.escapeHtml(t.subjectRequest || req?.subject || '—'), 32)}</span><i aria-hidden="true">↗</i>
+          </button>
         </td>
         <td data-label="Subject Task"><strong style="color:var(--text-primary)">${Utils.escapeHtml(t.subjectTask||'—')}</strong></td>
         <td data-label="Sales">${Utils.escapeHtml(t.requestBy||'—')}</td>
@@ -193,6 +196,12 @@ const Tasks = {
   },
 
   refresh() { document.getElementById('mainContent').innerHTML = this.render(); Utils.initComboboxes(document.getElementById('mainContent')); },
+
+  openRequest(requestId) {
+    if (!requestId) return;
+    sessionStorage.setItem('viewRequestId', requestId);
+    App.navigate('#requests');
+  },
 
   /* Badge Target Done: merah = overdue & belum done, oranye = ≤3 hari, hijau = done */
   targetBadge(t) {
