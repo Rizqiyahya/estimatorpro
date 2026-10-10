@@ -99,6 +99,11 @@ const DB = {
     if (u.status !== undefined) row.status = u.status;
     const { data, error } = await this._supabase.from('requests').update(row).eq('id', id).select().single();
     if (error) throw error;
+    // Database trigger is the atomic guarantee; also support deployments awaiting migration.
+    const { error: syncError } = await this._supabase.from('tasks').update({
+      subject_request: data.subject, customer: data.customer, end_user: data.end_user
+    }).eq('request_id', id);
+    if (syncError) throw new Error('Request tersimpan, tetapi sinkronisasi Task gagal: ' + syncError.message);
     return data;
   },
 
@@ -109,12 +114,28 @@ const DB = {
     if (error) throw error;
   },
 
+  async _inheritTaskIdentity(row, taskId) {
+    let requestId = row.request_id;
+    if (requestId === undefined && taskId) {
+      const { data, error } = await this._supabase.from('tasks').select('request_id').eq('id', taskId).single();
+      if (error) throw error;
+      requestId = data.request_id;
+    }
+    if (!requestId) return;
+    const { data, error } = await this._supabase.from('requests').select('subject,customer,end_user').eq('id', requestId).single();
+    if (error) throw error;
+    row.subject_request = data.subject;
+    row.customer = data.customer;
+    row.end_user = data.end_user;
+  },
+
   /* ---- Tasks ---- */
   async getTasks() {
     if (this._mode === 'local') return Storage.getTasks();
     const { data, error } = await this._supabase.from('tasks').select('*').order('created_at', { ascending: false });
     if (error) throw error;
-    return (data || []).map(t => ({
+    const requests = await this.getRequests();
+    return Storage._resolveTaskParents(data || [], requests).map(t => ({
       ...t,
       requestId: t.request_id,
       subjectRequest: t.subject_request,
@@ -153,6 +174,7 @@ const DB = {
       created_by: await this._getUserId()
     };
     // Upsert menjaga proses bootstrap dari cache lokal tetap aman bila ID telah ada.
+    await this._inheritTaskIdentity(row);
     const { data, error } = await this._supabase.from('tasks').upsert(row, { onConflict: 'id' }).select().single();
     if (error) throw error;
     return { ...data, requestId: data.request_id, subjectRequest: data.subject_request, subjectTask: data.subject_task, requestBy: data.request_by, endUser: data.end_user, scopePL: data.scope_pl, scopePS: data.scope_ps, scopeMS: data.scope_ms, pipelineStatus: data.pipeline_status, boqLink: data.boq_link, category: data.category, pipelineHistory: data.pipeline_history };
@@ -170,6 +192,7 @@ const DB = {
       if (map[k]) row[map[k]] = v;
       else if (['date', 'customer', 'location', 'priority'].includes(k)) row[k] = v;
     }
+    await this._inheritTaskIdentity(row, id);
     const { data, error } = await this._supabase.from('tasks').update(row).eq('id', id).select().single();
     if (error) throw error;
     return { ...data, requestId: data.request_id, subjectRequest: data.subject_request, subjectTask: data.subject_task, requestBy: data.request_by, endUser: data.end_user, scopePL: data.scope_pl, scopePS: data.scope_ps, scopeMS: data.scope_ms, pipelineStatus: data.pipeline_status, boqLink: data.boq_link, category: data.category, pipelineHistory: data.pipeline_history };
@@ -185,13 +208,7 @@ const DB = {
 
   async getTasksByRequest(rid) {
     if (this._mode === 'local') return Storage.getTasksByRequest(rid);
-    const { data } = await this._supabase.from('tasks').select('*').eq('request_id', rid).order('created_at', { ascending: false });
-    return (data || []).map(t => ({
-      ...t, requestId: t.request_id, subjectRequest: t.subject_request,
-      subjectTask: t.subject_task, requestBy: t.request_by, endUser: t.end_user,
-      scopePL: t.scope_pl, scopePS: t.scope_ps, scopeMS: t.scope_ms,
-      pipelineStatus: t.pipeline_status, boqLink: t.boq_link, category: t.category
-    }));
+    return (await this.getTasks()).filter(t => t.requestId === rid);
   },
 
   /* ---- Estimates ---- */

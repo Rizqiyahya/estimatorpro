@@ -3,8 +3,35 @@
    ============================================================ */
 
 const Storage = {
-  _load(k) { try { return JSON.parse(localStorage.getItem(k)) || []; } catch(e) { return []; } },
-  _save(k,d) { try { localStorage.setItem(k, JSON.stringify(d)); } catch(e) { Utils.showToast('Storage penuh!','error'); } },
+  // Request owns shared identity; task-specific work fields remain independent.
+  _resolveTaskParents(tasks, requests) {
+    const parents = new Map(requests.map(r => [r.id, r]));
+    return tasks.map(t => {
+      const r = parents.get(t.requestId ?? t.request_id);
+      if (!r) return t; // Never guess links for orphan/standalone tasks.
+      const subject = r.subject ?? '';
+      const customer = r.customer ?? '';
+      const endUser = r.endUser !== undefined ? r.endUser : (r.end_user ?? '');
+      return { ...t, subjectRequest: subject, subject_request: subject,
+        customer, endUser, end_user: endUser };
+    });
+  },
+  _load(k) {
+    try {
+      const data = JSON.parse(localStorage.getItem(k)) || [];
+      return k === 'ep2_tasks' ? this._resolveTaskParents(data, this._load('ep2_requests')) : data;
+    } catch(e) { return []; }
+  },
+  _save(k,d) {
+    try {
+      if (k === 'ep2_tasks') d = this._resolveTaskParents(d, this._load('ep2_requests'));
+      localStorage.setItem(k, JSON.stringify(d));
+      if (k === 'ep2_requests') {
+        const tasks = JSON.parse(localStorage.getItem('ep2_tasks') || '[]');
+        localStorage.setItem('ep2_tasks', JSON.stringify(this._resolveTaskParents(tasks, d)));
+      }
+    } catch(e) { Utils.showToast('Storage penuh!','error'); }
+  },
 
   /* Convert old-format IDs (id_xxxx) to valid UUIDs */
   _migrateIds(arr) {
