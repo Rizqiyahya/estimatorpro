@@ -38,8 +38,6 @@ REVOKE ALL ON FUNCTION public.handle_new_user() FROM PUBLIC, anon, authenticated
 GRANT EXECUTE ON FUNCTION public.handle_new_user() TO supabase_auth_admin;
 REVOKE ALL ON FUNCTION public.update_updated_at_column() FROM PUBLIC, anon, authenticated;
 
--- The current production project also has public.rls_auto_enable(). If that
--- administrative helper is retained, run these statements after confirming its
--- exact signature in the SQL Editor:
--- ALTER FUNCTION public.rls_auto_enable() SET search_path = public;
--- REVOKE ALL ON FUNCTION public.rls_auto_enable() FROM PUBLIC, anon, authenticated;
+-- Administrative helper uses a safe pg_catalog search path in production,
+-- but it must not be exposed through the public Data API.
+REVOKE ALL ON FUNCTION public.rls_auto_enable() FROM PUBLIC, anon, authenticated;
