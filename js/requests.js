@@ -115,10 +115,10 @@ const Requests = {
         <div class="workspace-table-card">
           <div class="workspace-table-meta"><span>${reqs.length} request ditampilkan</span><span>Klik subject untuk membuka task terkait</span></div>
           <div class="table-container workspace-table-container">
-          <table>
+          <table class="request-table">
             <thead>
               <tr>
-                <th>No</th><th>EP Code</th>${Utils.sortableTh('Date','date',this.sortKey,this.sortDir,'Requests')}${Utils.sortableTh('Subject','subject',this.sortKey,this.sortDir,'Requests')}${Utils.sortableTh('Email','emailBy',this.sortKey,this.sortDir,'Requests')}${Utils.sortableTh('Sales','requestBy',this.sortKey,this.sortDir,'Requests')}
+                <th>EP Code</th>${Utils.sortableTh('Date','date',this.sortKey,this.sortDir,'Requests')}${Utils.sortableTh('Subject','subject',this.sortKey,this.sortDir,'Requests')}${Utils.sortableTh('Email','emailBy',this.sortKey,this.sortDir,'Requests')}${Utils.sortableTh('Sales','requestBy',this.sortKey,this.sortDir,'Requests')}
                 ${Utils.sortableTh('Customer','customer',this.sortKey,this.sortDir,'Requests')}${Utils.sortableTh('End User','endUser',this.sortKey,this.sortDir,'Requests')}${Utils.sortableTh('Division','division',this.sortKey,this.sortDir,'Requests')}
                 ${Utils.sortableTh('Status','status',this.sortKey,this.sortDir,'Requests')}<th></th>
               </tr>
@@ -154,7 +154,6 @@ const Requests = {
     const tc = Storage.getTasksByRequest(r.id).length;
     return `
       <tr data-rid="${r.id}" data-div="${r.division}" data-status="${r.status}">
-        <td data-label="No" style="font-family:var(--font-mono);font-size:0.74rem;color:var(--text-muted)">#${r.noId||'—'}</td>
         <td data-label="EP Code"><div class="tender-code-cell"><code>${this._escape(this._tenderCode(r))}</code>${this._tenderCode(r) !== '—' ? `<button class="btn-icon btn-xs tender-code-copy" type="button" onclick="Requests._copyTenderCode(this, '${this._escape(this._tenderCode(r))}')" title="Salin kode tender"><i class="fa-regular fa-copy"></i></button>` : ''}</div></td>
         <td data-label="Date">${Utils.formatDateShort(r.date)}</td>
         <td data-label="Subject">

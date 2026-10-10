@@ -454,6 +454,43 @@ tr:hover td{background:color-mix(in srgb,var(--accent) 4%,transparent)}
 td.actions{display:table-cell;text-align:right;white-space:nowrap;vertical-align:middle}
 td.actions .btn-icon{margin-left:4px;vertical-align:middle}
 td.actions .btn-icon:first-child{margin-left:0}
+
+/* Keep the operational tables fully visible on desktop after adding EP Code. */
+@media(min-width:1025px){
+  .workspace-table-container:has(.request-table),.workspace-table-container:has(.task-table){overflow-x:hidden}
+  .workspace-table-container .request-table,.workspace-table-container .task-table{width:100%;min-width:0;table-layout:fixed}
+  .workspace-table-container .request-table th,.workspace-table-container .request-table td,.workspace-table-container .task-table th,.workspace-table-container .task-table td{padding:10px 8px}
+  .workspace-table-container .request-table th:nth-child(1),.workspace-table-container .request-table td:nth-child(1){width:10%}
+  .workspace-table-container .request-table th:nth-child(2),.workspace-table-container .request-table td:nth-child(2){width:5%}
+  .workspace-table-container .request-table th:nth-child(3),.workspace-table-container .request-table td:nth-child(3){width:21%}
+  .workspace-table-container .request-table th:nth-child(4),.workspace-table-container .request-table td:nth-child(4){width:11%}
+  .workspace-table-container .request-table th:nth-child(5),.workspace-table-container .request-table td:nth-child(5){width:8%}
+  .workspace-table-container .request-table th:nth-child(6),.workspace-table-container .request-table td:nth-child(6){width:12%}
+  .workspace-table-container .request-table th:nth-child(7),.workspace-table-container .request-table td:nth-child(7){width:12%}
+  .workspace-table-container .request-table th:nth-child(8),.workspace-table-container .request-table td:nth-child(8){width:7%}
+  .workspace-table-container .request-table th:nth-child(9),.workspace-table-container .request-table td:nth-child(9){width:7%}
+  .workspace-table-container .request-table th:nth-child(10),.workspace-table-container .request-table td:nth-child(10){width:7%}
+  .workspace-table-container .task-table th:nth-child(1),.workspace-table-container .task-table td:nth-child(1){width:9%}
+  .workspace-table-container .task-table th:nth-child(2),.workspace-table-container .task-table td:nth-child(2){width:4%}
+  .workspace-table-container .task-table th:nth-child(3),.workspace-table-container .task-table td:nth-child(3){width:15%}
+  .workspace-table-container .task-table th:nth-child(4),.workspace-table-container .task-table td:nth-child(4){width:15%}
+  .workspace-table-container .task-table th:nth-child(5),.workspace-table-container .task-table td:nth-child(5){width:5%}
+  .workspace-table-container .task-table th:nth-child(6),.workspace-table-container .task-table td:nth-child(6){width:6%}
+  .workspace-table-container .task-table th:nth-child(7),.workspace-table-container .task-table td:nth-child(7){width:6%}
+  .workspace-table-container .task-table th:nth-child(8),.workspace-table-container .task-table td:nth-child(8){width:4%}
+  .workspace-table-container .task-table th:nth-child(9),.workspace-table-container .task-table td:nth-child(9){width:5%}
+  .workspace-table-container .task-table th:nth-child(10),.workspace-table-container .task-table td:nth-child(10){width:4%}
+  .workspace-table-container .task-table th:nth-child(11),.workspace-table-container .task-table td:nth-child(11){width:5%}
+  .workspace-table-container .task-table th:nth-child(12),.workspace-table-container .task-table td:nth-child(12){width:5%}
+  .workspace-table-container .task-table th:nth-child(13),.workspace-table-container .task-table td:nth-child(13){width:6%}
+  .workspace-table-container .task-table th:nth-child(14),.workspace-table-container .task-table td:nth-child(14){width:6%}
+  .workspace-table-container .task-table th:nth-child(15),.workspace-table-container .task-table td:nth-child(15){width:5%}
+  .workspace-table-container .request-table td:not(.actions),.workspace-table-container .task-table td:not(.actions){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .workspace-table-container .request-table .tender-code-cell,.workspace-table-container .task-table .tender-code-inline{font-size:.67rem}
+  .workspace-table-container .request-table td.actions,.workspace-table-container .task-table td.actions{padding-right:10px}
+  .workspace-table-container .request-table td.actions .btn-icon,.workspace-table-container .task-table td.actions .btn-icon{width:27px;height:27px}
+  .workspace-table-container .request-table td.actions .btn-icon+.btn-icon,.workspace-table-container .task-table td.actions .btn-icon+.btn-icon{margin-left:2px}
+}
 .res-col{color:var(--text-secondary);font-size:0.8rem}
 
 /* ===== BADGES ===== */

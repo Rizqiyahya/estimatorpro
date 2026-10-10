@@ -95,10 +95,10 @@ const Tasks = {
         <div class="workspace-table-card">
           <div class="workspace-table-meta"><span>${tasks.length} task ditampilkan</span><span>Gunakan header kolom untuk mengurutkan data</span></div>
           <div class="table-container workspace-table-container">
-          <table>
+          <table class="task-table">
             <thead>
               <tr>
-                <th>No</th><th>EP Code</th>${Utils.sortableTh('Date','date',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Request','subjectRequest',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Subject Task','subjectTask',this.sortKey,this.sortDir,'Tasks')}
+                <th>EP Code</th>${Utils.sortableTh('Date','date',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Request','subjectRequest',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Subject Task','subjectTask',this.sortKey,this.sortDir,'Tasks')}
                 ${Utils.sortableTh('Sales','requestBy',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Customer','customer',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('End User','endUser',this.sortKey,this.sortDir,'Tasks')}
                 ${Utils.sortableTh('Division','division',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Category','category',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Scope','scope',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Location','location',this.sortKey,this.sortDir,'Tasks')}
                 ${Utils.sortableTh('Priority','priority',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Pipeline','pipelineStatus',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Target','targetDate',this.sortKey,this.sortDir,'Tasks')}<th></th>
@@ -143,7 +143,6 @@ const Tasks = {
 
     return `
       <tr data-tid="${t.id}" data-divid="${req?.division||''}" data-pipe="${t.pipelineStatus}">
-        <td data-label="No" style="font-family:var(--font-mono);font-size:0.72rem;color:var(--text-muted)">#${i+1}</td>
         <td data-label="EP Code"><code class="tender-code-inline">${Utils.escapeHtml(req?.tenderCode||req?.tender_code||'—')}</code></td>
         <td data-label="Date">${Utils.formatDateShort(t.date)}</td>
         <td data-label="Request">
