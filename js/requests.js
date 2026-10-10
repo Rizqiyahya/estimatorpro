@@ -15,6 +15,27 @@ const Requests = {
     this.refresh();
   },
 
+  _escape(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); },
+
+  _tenderCode(r) {
+    return r?.tenderCode || r?.tender_code || '—';
+  },
+
+  _copyTenderCode(button, code) {
+    if (!code || code === '—') return;
+    const original = button.innerHTML;
+    const done = () => {
+      button.innerHTML = '<i class="fa-solid fa-check"></i>';
+      button.title = 'Kode tersalin';
+      setTimeout(() => { button.innerHTML = original; button.title = 'Salin kode tender'; }, 1400);
+    };
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(code).then(done).catch(() => window.prompt('Salin kode tender:', code));
+    } else {
+      window.prompt('Salin kode tender:', code);
+    }
+  },
+
   /* Click on request subject → open Tasks view filtered to this request */
   openTasksFor(reqId) {
     sessionStorage.setItem('tasksFilterRequest', reqId);
@@ -39,7 +60,8 @@ const Requests = {
         (r.requestBy||'').toLowerCase().includes(q) ||
         (r.customer||'').toLowerCase().includes(q) ||
         (r.endUser||'').toLowerCase().includes(q) ||
-        (r.emailBy||'').toLowerCase().includes(q)
+        (r.emailBy||'').toLowerCase().includes(q) ||
+        (r.tenderCode||r.tender_code||'').toLowerCase().includes(q)
       );
     }
     // Apply column sort (default: newest first)
@@ -79,7 +101,7 @@ const Requests = {
           <button class="filter-pill ${this.filterStatus==='lose'?'active':''}" onclick="Requests.setStatusFilter('lose')">Lose / Drop</button>
         </div></div>
         <div class="search-bar workspace-search">
-          <input type="text" class="search-input" placeholder="Cari subject, sales, customer..." id="reqSearchInput" value="${Utils.escapeHtml(this.searchText)}">
+          <input type="text" class="search-input" placeholder="Cari kode EP, subject, sales, customer..." id="reqSearchInput" value="${Utils.escapeHtml(this.searchText)}">
         </div>
       </section>
 
@@ -96,7 +118,7 @@ const Requests = {
           <table>
             <thead>
               <tr>
-                <th>No</th>${Utils.sortableTh('Date','date',this.sortKey,this.sortDir,'Requests')}${Utils.sortableTh('Subject','subject',this.sortKey,this.sortDir,'Requests')}${Utils.sortableTh('Email','emailBy',this.sortKey,this.sortDir,'Requests')}${Utils.sortableTh('Sales','requestBy',this.sortKey,this.sortDir,'Requests')}
+                <th>No</th><th>EP Code</th>${Utils.sortableTh('Date','date',this.sortKey,this.sortDir,'Requests')}${Utils.sortableTh('Subject','subject',this.sortKey,this.sortDir,'Requests')}${Utils.sortableTh('Email','emailBy',this.sortKey,this.sortDir,'Requests')}${Utils.sortableTh('Sales','requestBy',this.sortKey,this.sortDir,'Requests')}
                 ${Utils.sortableTh('Customer','customer',this.sortKey,this.sortDir,'Requests')}${Utils.sortableTh('End User','endUser',this.sortKey,this.sortDir,'Requests')}${Utils.sortableTh('Division','division',this.sortKey,this.sortDir,'Requests')}
                 ${Utils.sortableTh('Status','status',this.sortKey,this.sortDir,'Requests')}<th></th>
               </tr>
@@ -133,6 +155,7 @@ const Requests = {
     return `
       <tr data-rid="${r.id}" data-div="${r.division}" data-status="${r.status}">
         <td data-label="No" style="font-family:var(--font-mono);font-size:0.74rem;color:var(--text-muted)">#${r.noId||'—'}</td>
+        <td data-label="EP Code"><div class="tender-code-cell"><code>${this._escape(this._tenderCode(r))}</code>${this._tenderCode(r) !== '—' ? `<button class="btn-icon btn-xs tender-code-copy" type="button" onclick="Requests._copyTenderCode(this, '${this._escape(this._tenderCode(r))}')" title="Salin kode tender"><i class="fa-regular fa-copy"></i></button>` : ''}</div></td>
         <td data-label="Date">${Utils.formatDateShort(r.date)}</td>
         <td data-label="Subject">
           <button class="workspace-request-task-link" type="button" onclick="Requests.openTasksFor('${r.id}')" title="Lihat task dari request ini"><span>${Utils.escapeHtml(r.subject||'—')}</span><i aria-hidden="true">↗</i></button>
@@ -171,7 +194,7 @@ const Requests = {
       if (this.filterDiv !== 'all' && req.division !== this.filterDiv) match = false;
       if (this.filterStatus !== 'all' && req.status !== this.filterStatus) match = false;
       if (q) {
-        const hay = [req.subject, req.requestBy, req.customer, req.endUser, req.emailBy].join(' ').toLowerCase();
+        const hay = [req.tenderCode, req.tender_code, req.subject, req.requestBy, req.customer, req.endUser, req.emailBy].join(' ').toLowerCase();
         if (!hay.includes(q)) match = false;
       }
       row.style.display = match ? '' : 'none';
@@ -192,6 +215,7 @@ const Requests = {
         <button class="modal-close" onclick="App.closeModal()">✕</button>
       </div>
       <form id="reqForm" onsubmit="Requests.save(event,'${editId||''}')">
+        ${isEdit ? `<div class="form-group tender-code-form-group"><label class="form-label">EstimatorPro Tender Code</label><div class="tender-code-readonly"><code>${this._escape(this._tenderCode(req))}</code><button class="btn-icon btn-xs tender-code-copy" type="button" onclick="Requests._copyTenderCode(this, '${this._escape(this._tenderCode(req))}')" title="Salin kode tender"><i class="fa-regular fa-copy"></i></button></div><div class="form-hint">Kode diterbitkan database saat Request dibuat dan tidak dapat diubah.</div></div>` : `<div class="tender-code-pending"><i class="fa-solid fa-fingerprint"></i><span><strong>Kode tender akan diterbitkan otomatis</strong><small>Format resmi: EP_YYYYMM_NNNN. Kode permanen dibuat oleh database setelah Request disimpan.</small></span></div>`}
         <div class="form-row">
           <div class="form-group" style="flex:2">
             <label class="form-label">Subject / Project Name *</label>

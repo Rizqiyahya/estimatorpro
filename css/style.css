@@ -42,6 +42,57 @@
 .wbs-present-footer { display:flex; justify-content:space-between; margin-top:22px; padding-top:9px; border-top:1px solid var(--border); color:var(--text-muted); font-size:9px; }
 @media (max-width:800px) { .wbs-present-hero{display:block}.wbs-present-summary{margin-top:16px;justify-content:start}.wbs-present-grid{grid-template-columns:1fr} }
 
+/* Tender identifiers — EstimatorPro immutable request codes */
+.tender-code-cell,
+.tender-code-readonly {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+}
+.tender-code-cell code,
+.tender-code-readonly code,
+.tender-code-inline {
+  font-family: var(--font-mono);
+  font-size: .72rem;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: -.01em;
+  white-space: nowrap;
+}
+.tender-code-copy {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 5px;
+}
+.tender-code-pending {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 12px;
+  margin-bottom: 17px;
+  color: var(--text-secondary);
+  background: var(--surface-2);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+}
+.tender-code-pending > i { color: var(--accent); margin-top: 2px; }
+.tender-code-pending strong,
+.tender-code-pending small { display: block; }
+.tender-code-pending strong { color: var(--text-primary); font-size: .78rem; }
+.tender-code-pending small { margin-top: 3px; font-size: .72rem; line-height: 1.45; }
+.tender-code-form-group { margin-bottom: 17px; }
+.tender-code-readonly {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
 /* Online presence */
 .presence-wrap { position:relative; }
 .presence-button { display:flex; align-items:center; gap:7px; min-height:34px; padding:4px 9px; border:1px solid var(--border); border-radius:9px; background:var(--bg-card); color:var(--text-primary); cursor:pointer; font:inherit; font-size:.76rem; font-weight:600; transition:border-color .15s, background .15s; }

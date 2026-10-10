@@ -43,6 +43,7 @@ const Tasks = {
       tasks = tasks.filter(t =>
         (t.subjectTask||'').toLowerCase().includes(q) ||
         (t.subjectRequest||'').toLowerCase().includes(q) ||
+        (requests.find(r => r.id === t.requestId)?.tenderCode || requests.find(r => r.id === t.requestId)?.tender_code || '').toLowerCase().includes(q) ||
         (t.requestBy||'').toLowerCase().includes(q) ||
         (t.customer||'').toLowerCase().includes(q)
       );
@@ -71,14 +72,14 @@ const Tasks = {
       <section class="workspace-toolbar tasks-toolbar">
         <div class="workspace-filter-block"><span class="workspace-filter-label">Division</span><div class="filter-pills">${divPills.map(d => `<button class="filter-pill ${this.filterDiv===d.id?'active':''}" style="${d.style}" onclick="Tasks.filterDiv='${d.id}';Tasks.refresh()">${d.label}</button>`).join('')}</div></div>
         <div class="workspace-filter-block"><span class="workspace-filter-label">Pipeline</span><div class="filter-pills"><button class="filter-pill ${this.filterPipe==='all'?'active':''}" onclick="Tasks.filterPipe='all';Tasks.refresh()">All</button><button class="filter-pill ${this.filterPipe==='todo'?'active':''}" onclick="Tasks.filterPipe='todo';Tasks.refresh()">To Do</button><button class="filter-pill ${this.filterPipe==='in_progress'?'active':''}" onclick="Tasks.filterPipe='in_progress';Tasks.refresh()">In Progress</button><button class="filter-pill ${this.filterPipe==='review'?'active':''}" onclick="Tasks.filterPipe='review';Tasks.refresh()">Review</button><button class="filter-pill ${this.filterPipe==='done'?'active':''}" onclick="Tasks.filterPipe='done';Tasks.refresh()">Done</button><button class="filter-pill ${this.filterPipe==='revisi'?'active':''}" onclick="Tasks.filterPipe='revisi';Tasks.refresh()">Revisi</button></div></div>
-        <div class="workspace-filter-block workspace-filter-select"><span class="workspace-filter-label">Request & category</span><div class="workspace-select-row"><div class="workspace-combobox">${Utils.combobox({id:'taskFilterReqCb',name:'tasksFilterRequest',options:[{value:'all',label:'All Requests'},...requests.slice().sort((a,b)=>(a.subject||'').localeCompare(b.subject||'','id')).map(r=>({value:r.id,label:`${Utils.truncate(r.subject||'Untitled',40)} [${r.division}]`,group:r.division}))],selected:this.filterRequest||'all',placeholder:'Cari request…',onChange:"Tasks.filterRequest=v;sessionStorage.setItem('tasksFilterRequest',v);Tasks.refresh()"})}</div><select class="form-select workspace-category-select" onchange="Tasks.filterCat=this.value;Tasks.refresh()">${Utils.catOptions(this.filterCat === 'all' ? '' : this.filterCat).replace('— Semua Kategori —','All Category')}</select></div></div>
+        <div class="workspace-filter-block workspace-filter-select"><span class="workspace-filter-label">Request & category</span><div class="workspace-select-row"><div class="workspace-combobox">${Utils.combobox({id:'taskFilterReqCb',name:'tasksFilterRequest',options:[{value:'all',label:'All Requests'},...requests.slice().sort((a,b)=>(a.subject||'').localeCompare(b.subject||'','id')).map(r=>({value:r.id,label:`${r.tenderCode||r.tender_code||'#'+(r.noId||'—')} — ${Utils.truncate(r.subject||'Untitled',40)} [${r.division}]`,group:r.division}))],selected:this.filterRequest||'all',placeholder:'Cari request…',onChange:"Tasks.filterRequest=v;sessionStorage.setItem('tasksFilterRequest',v);Tasks.refresh()"})}</div><select class="form-select workspace-category-select" onchange="Tasks.filterCat=this.value;Tasks.refresh()">${Utils.catOptions(this.filterCat === 'all' ? '' : this.filterCat).replace('— Semua Kategori —','All Category')}</select></div></div>
         <div class="workspace-filter-block"><span class="workspace-filter-label">Scope</span><div class="filter-pills"><button class="filter-pill ${this.filterScope==='all'?'active':''}" onclick="Tasks.filterScope='all';Tasks.refresh()">All</button><button class="filter-pill ${this.filterScope==='PL'?'active':''}" onclick="Tasks.filterScope='PL';Tasks.refresh()">PL</button><button class="filter-pill ${this.filterScope==='PS'?'active':''}" onclick="Tasks.filterScope='PS';Tasks.refresh()">PS</button><button class="filter-pill ${this.filterScope==='MS'?'active':''}" onclick="Tasks.filterScope='MS';Tasks.refresh()">MS</button></div></div>
         <div class="search-bar workspace-search"><input type="text" class="search-input" placeholder="Cari task, request, sales..." id="taskSearchInput" value="${Utils.escapeHtml(this.searchText)}"></div>
       </section>
 
       ${activeRequest ? `
         <div class="workspace-context-card">
-          <div><div class="workspace-context-kicker">Filtered by request</div><div class="workspace-context-title">${Utils.escapeHtml(activeRequest.subject||'—')}</div><div class="workspace-context-meta">${activeRequest.division||'—'} <span>·</span> ${Utils.escapeHtml(activeRequest.customer||'')} <span>·</span> ${Utils.escapeHtml(activeRequest.endUser||'')} <span>·</span> ${Utils.formatDateShort(activeRequest.date)}</div></div>
+          <div><div class="workspace-context-kicker">Filtered by request</div><div class="workspace-context-title"><code class="tender-code-inline">${Utils.escapeHtml(activeRequest.tenderCode||activeRequest.tender_code||'—')}</code> ${Utils.escapeHtml(activeRequest.subject||'—')}</div><div class="workspace-context-meta">${activeRequest.division||'—'} <span>·</span> ${Utils.escapeHtml(activeRequest.customer||'')} <span>·</span> ${Utils.escapeHtml(activeRequest.endUser||'')} <span>·</span> ${Utils.formatDateShort(activeRequest.date)}</div></div>
           <div class="workspace-context-actions"><span class="workspace-context-count">${tasks.length} task</span><button class="btn btn-xs btn-secondary" onclick="Tasks.filterRequest='all';sessionStorage.removeItem('tasksFilterRequest');Tasks.refresh()">Clear filter</button></div>
         </div>
       ` : ''}
@@ -97,7 +98,7 @@ const Tasks = {
           <table>
             <thead>
               <tr>
-                <th>No</th>${Utils.sortableTh('Date','date',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Request','subjectRequest',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Subject Task','subjectTask',this.sortKey,this.sortDir,'Tasks')}
+                <th>No</th><th>EP Code</th>${Utils.sortableTh('Date','date',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Request','subjectRequest',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Subject Task','subjectTask',this.sortKey,this.sortDir,'Tasks')}
                 ${Utils.sortableTh('Sales','requestBy',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Customer','customer',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('End User','endUser',this.sortKey,this.sortDir,'Tasks')}
                 ${Utils.sortableTh('Division','division',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Category','category',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Scope','scope',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Location','location',this.sortKey,this.sortDir,'Tasks')}
                 ${Utils.sortableTh('Priority','priority',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Pipeline','pipelineStatus',this.sortKey,this.sortDir,'Tasks')}${Utils.sortableTh('Target','targetDate',this.sortKey,this.sortDir,'Tasks')}<th></th>
@@ -143,6 +144,7 @@ const Tasks = {
     return `
       <tr data-tid="${t.id}" data-divid="${req?.division||''}" data-pipe="${t.pipelineStatus}">
         <td data-label="No" style="font-family:var(--font-mono);font-size:0.72rem;color:var(--text-muted)">#${i+1}</td>
+        <td data-label="EP Code"><code class="tender-code-inline">${Utils.escapeHtml(req?.tenderCode||req?.tender_code||'—')}</code></td>
         <td data-label="Date">${Utils.formatDateShort(t.date)}</td>
         <td data-label="Request">
           <button class="workspace-request-link" type="button" onclick="Tasks.openRequest('${t.requestId}')" title="Buka request terkait">
@@ -188,7 +190,7 @@ const Tasks = {
         if (this.filterScope === 'MS' && !t.scopeMS) match = false;
       }
       if (q) {
-        const hay = [t.subjectTask, t.subjectRequest, t.requestBy, t.customer].join(' ').toLowerCase();
+        const hay = [req?.tenderCode, req?.tender_code, t.subjectTask, t.subjectRequest, t.requestBy, t.customer].join(' ').toLowerCase();
         if (!hay.includes(q)) match = false;
       }
       row.style.display = match ? '' : 'none';
@@ -265,7 +267,7 @@ const Tasks = {
             <label class="form-label">Linked Request *</label>
             ${Utils.combobox({
               name: 'requestId',
-              options: requests.map(r => ({ value: r.id, label: `${r.subject||'Untitled'} [${r.division}]`, group: r.division })),
+              options: requests.map(r => ({ value: r.id, label: `${r.tenderCode||r.tender_code||'#'+(r.noId||'—')} — ${r.subject||'Untitled'} [${r.division}]`, group: r.division })),
               selected: task?.requestId || '',
               placeholder: 'Ketik untuk mencari request…',
               onChange: 'Tasks.onReqChange(v)'
@@ -274,6 +276,7 @@ const Tasks = {
           <div class="form-group">
             <label class="form-label">Subject Request</label>
             <input type="text" class="form-input" name="subjectRequest" id="taskSubjReq" value="${Utils.escapeHtml(task?.subjectRequest||'')}" readonly style="opacity:0.7">
+            <div class="form-hint">Tender: <code id="taskTenderCode" class="tender-code-inline">${Utils.escapeHtml((requests.find(r => r.id === task?.requestId)?.tenderCode || requests.find(r => r.id === task?.requestId)?.tender_code || '—'))}</code></div>
           </div>
         </div>
         <div class="form-row">
@@ -337,6 +340,8 @@ const Tasks = {
     if (req) {
       const sf = (id,v) => { const el = document.getElementById(id); if(el) el.value = v||''; };
       sf('taskSubjReq', req.subject);
+      const tenderCodeEl = document.getElementById('taskTenderCode');
+      if (tenderCodeEl) tenderCodeEl.textContent = req.tenderCode || req.tender_code || '—';
       sf('taskReqBy', req.requestBy);
       sf('taskCustomer', req.customer);
       sf('taskEndUser', req.endUser);

@@ -52,7 +52,7 @@ const DB = {
       ...r,
       scopePL: r.scope_pl, scopePS: r.scope_ps, scopeMS: r.scope_ms,
       emailBy: r.email_by, requestBy: r.request_by, endUser: r.end_user,
-      noId: r.no_id,
+      noId: r.no_id, tenderCode: r.tender_code,
       createdAt: r.created_at, updatedAt: r.updated_at
     }));
   },
@@ -60,7 +60,7 @@ const DB = {
   async addRequest(r) {
     if (this._mode === 'local') return Storage.addRequest(r);
     const row = {
-      id: r.id || undefined,
+      // Keep the established local request number; PostgreSQL owns the immutable EP code.
       no_id: r.noId || 1,
       date: r.date || new Date().toISOString().split('T')[0],
       subject: r.subject || '',
@@ -76,10 +76,10 @@ const DB = {
       status: r.status || 'open',
       created_by: await this._getUserId()
     };
-    // Upsert menjaga proses bootstrap dari cache lokal tetap aman bila ID telah ada.
-    const { data, error } = await this._supabase.from('requests').upsert(row, { onConflict: 'id' }).select().single();
+    // Inserts force the database trigger to allocate the immutable tender code.
+    const { data, error } = await this._supabase.from('requests').insert(row).select().single();
     if (error) throw error;
-    return { ...data, scopePL: data.scope_pl, scopePS: data.scope_ps, scopeMS: data.scope_ms, emailBy: data.email_by, requestBy: data.request_by, endUser: data.end_user, noId: data.no_id };
+    return { ...data, scopePL: data.scope_pl, scopePS: data.scope_ps, scopeMS: data.scope_ms, emailBy: data.email_by, requestBy: data.request_by, endUser: data.end_user, noId: data.no_id, tenderCode: data.tender_code, createdAt: data.created_at, updatedAt: data.updated_at };
   },
 
   async updateRequest(id, u) {

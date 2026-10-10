@@ -50,6 +50,7 @@ CREATE OR REPLACE TRIGGER on_auth_user_created
 CREATE TABLE public.requests (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   no_id INTEGER NOT NULL,
+  tender_code TEXT UNIQUE CHECK (tender_code ~ '^EP_[0-9]{6}_[0-9]{4}$'),
   date DATE NOT NULL DEFAULT CURRENT_DATE,
   subject TEXT NOT NULL DEFAULT '',
   email_by TEXT NOT NULL DEFAULT '',
@@ -151,6 +152,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.wbs;
 -- ============================================================
 CREATE INDEX idx_requests_division ON public.requests(division);
 CREATE INDEX idx_requests_status ON public.requests(status);
+CREATE INDEX idx_requests_tender_code ON public.requests(tender_code);
 CREATE INDEX idx_requests_created_by ON public.requests(created_by);
 CREATE INDEX idx_tasks_request_id ON public.tasks(request_id);
 CREATE INDEX idx_tasks_pipeline_status ON public.tasks(pipeline_status);
@@ -170,6 +172,66 @@ END;
 $$;
 -- Trigger-only function: prevent calls through the public Data API.
 REVOKE ALL ON FUNCTION public.update_updated_at_column() FROM PUBLIC, anon, authenticated;
+
+-- Tender codes are created exclusively in the database and remain immutable.
+CREATE TABLE public.request_tender_code_sequences (
+  month_key TEXT PRIMARY KEY CHECK (month_key ~ '^[0-9]{6}$'),
+  last_number INTEGER NOT NULL DEFAULT 0 CHECK (last_number BETWEEN 0 AND 9999),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ALTER TABLE public.request_tender_code_sequences ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.request_tender_code_sequences FROM PUBLIC, anon, authenticated;
+
+CREATE OR REPLACE FUNCTION public.generate_request_tender_code(p_registered_at TIMESTAMPTZ DEFAULT now())
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE v_month_key TEXT; v_next_number INTEGER;
+BEGIN
+  v_month_key := to_char(timezone('Asia/Jakarta', COALESCE(p_registered_at, now())), 'YYYYMM');
+  INSERT INTO public.request_tender_code_sequences (month_key, last_number, updated_at)
+  VALUES (v_month_key, 1, now())
+  ON CONFLICT (month_key) DO UPDATE
+    SET last_number = public.request_tender_code_sequences.last_number + 1, updated_at = now()
+  RETURNING last_number INTO v_next_number;
+  IF v_next_number > 9999 THEN RAISE EXCEPTION 'Tender-code monthly capacity exceeded for %', v_month_key; END IF;
+  RETURN 'EP_' || v_month_key || '_' || lpad(v_next_number::TEXT, 4, '0');
+END;
+$$;
+REVOKE ALL ON FUNCTION public.generate_request_tender_code(TIMESTAMPTZ) FROM PUBLIC, anon, authenticated;
+
+CREATE OR REPLACE FUNCTION public.assign_immutable_request_tender_code()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    NEW.tender_code := public.generate_request_tender_code(now());
+  ELSIF OLD.tender_code IS NOT NULL AND NEW.tender_code IS DISTINCT FROM OLD.tender_code THEN
+    RAISE EXCEPTION 'Tender code is immutable';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.assign_immutable_request_tender_code() FROM PUBLIC, anon, authenticated;
+CREATE TRIGGER set_request_tender_code BEFORE INSERT OR UPDATE ON public.requests
+  FOR EACH ROW EXECUTE FUNCTION public.assign_immutable_request_tender_code();
+
+-- Install-time safety: requests created before the code subsystem get a
+-- registration-month code during schema bootstrap.
+DO $$
+DECLARE v_request RECORD; v_backfill_at TIMESTAMPTZ := now();
+BEGIN
+  FOR v_request IN SELECT id FROM public.requests WHERE tender_code IS NULL ORDER BY created_at ASC, id ASC LOOP
+    UPDATE public.requests SET tender_code = public.generate_request_tender_code(v_backfill_at) WHERE id = v_request.id;
+  END LOOP;
+END;
+$$;
+ALTER TABLE public.requests ALTER COLUMN tender_code SET NOT NULL;
 
 CREATE TRIGGER update_requests_updated_at BEFORE UPDATE ON public.requests
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();

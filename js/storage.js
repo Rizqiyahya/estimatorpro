@@ -12,8 +12,9 @@ const Storage = {
       const subject = r.subject ?? '';
       const customer = r.customer ?? '';
       const endUser = r.endUser !== undefined ? r.endUser : (r.end_user ?? '');
+      const tenderCode = r.tenderCode !== undefined ? r.tenderCode : (r.tender_code ?? '');
       return { ...t, subjectRequest: subject, subject_request: subject,
-        customer, endUser, end_user: endUser };
+        customer, endUser, end_user: endUser, tenderCode, tender_code: tenderCode };
     });
   },
   _load(k) {
