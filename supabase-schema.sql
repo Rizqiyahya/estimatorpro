@@ -13,7 +13,7 @@ CREATE TABLE public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email TEXT NOT NULL,
   name TEXT NOT NULL DEFAULT '',
-  role TEXT NOT NULL DEFAULT 'estimator' CHECK (role IN ('estimator', 'manager')),
+  role TEXT NOT NULL DEFAULT 'manager' CHECK (role IN ('estimator', 'manager')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -31,7 +31,7 @@ BEGIN
     NEW.id,
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1)),
-    'estimator'
+    'manager'
   );
   RETURN NEW;
 END;
