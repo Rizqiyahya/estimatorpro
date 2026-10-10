@@ -10,7 +10,7 @@ const App = {
     const settings = Storage.getSettings();
     document.documentElement.setAttribute('data-theme', settings.theme || 'dark');
 
-    // Init DB (auto-detects Supabase if configured)
+    // Init the deployment-managed cloud workspace; local storage remains an offline cache.
     Storage.migrate(); // Convert old IDs to UUIDs
     await DB.init();
     await Auth.init();

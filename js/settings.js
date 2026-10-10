@@ -5,36 +5,35 @@
 const SettingsView = {
   render() {
     const d = Storage.exportAll();
-    const settings = Storage.getSettings();
+    const cloudReady = DB && DB.isCloud && DB.isCloud();
+    const lastSync = localStorage.getItem(Storage._lastSyncKey);
+    const syncLabel = cloudReady ? 'Connected' : 'Offline cache';
+    const syncClass = cloudReady ? 'success' : 'warning';
+    const lastSyncLabel = lastSync ? new Date(lastSync).toLocaleString('id-ID', { dateStyle:'medium', timeStyle:'short' }) : 'Belum ada sinkronisasi tercatat';
     const html = `
       <div class="page-header">
-        <div><h1 class="page-title">Settings</h1><p class="page-subtitle">Data management, backup & cloud config</p></div>
+        <div><h1 class="page-title">Settings</h1><p class="page-subtitle">Data management, synchronization & backup</p></div>
       </div>
 
       <div class="settings-section">
-        <h3 class="settings-section-title">☁️ Cloud Configuration (Supabase)</h3>
+        <h3 class="settings-section-title">☁️ Data & Synchronization</h3>
         <div class="settings-card">
-          <p style="font-size:0.84rem;color:var(--text-secondary);margin-bottom:14px">
-            Connect to Supabase to enable multi-user access, cloud sync, and real-time updates.
-            <a href="https://supabase.com" target="_blank" style="color:var(--accent)">Create free project →</a>
-          </p>
-          <div style="display:flex;flex-direction:column;gap:12px">
-            <div class="form-group">
-              <label class="form-label">Supabase URL</label>
-              <input type="text" class="form-input" id="supabaseUrl" value="${Utils.escapeHtml(settings.supabaseUrl || '')}" placeholder="https://xxxxxxxxxxxx.supabase.co">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap">
+            <div>
+              <strong>Starcom EstimatorPro Workspace</strong>
+              <p style="font-size:0.84rem;color:var(--text-secondary);margin-top:4px">Koneksi data dikelola oleh administrator aplikasi. Kredensial cloud tidak dapat diubah dari perangkat pengguna.</p>
             </div>
-            <div class="form-group">
-              <label class="form-label">Supabase Anon Key</label>
-              <input type="text" class="form-input" id="supabaseKey" value="${Utils.escapeHtml(settings.supabaseKey || '')}" placeholder="eyJhbGciOiJIUzI1NiIs...">
-            </div>
-            <div style="display:flex;gap:8px">
-              <button class="btn btn-primary btn-sm" onclick="SettingsView.saveSupabase()">💾 Save & Connect</button>
-              ${settings.supabaseUrl ? `<button class="btn btn-secondary btn-sm" onclick="SettingsView.disconnectSupabase()">🔌 Disconnect</button>` : ''}
-            </div>
-            <div id="supabaseStatus" style="font-size:0.8rem;color:var(--text-muted)">
-              ${settings.supabaseUrl ? '✅ Supabase configured. Refresh page to connect.' : '⚠️ Not connected — using local storage only.'}
-            </div>
+            <span class="status-badge ${syncClass}">${cloudReady ? '●' : '◌'} ${syncLabel}</span>
           </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:16px 0">
+            <div class="sync-info-item"><span>Mode data</span><strong>${cloudReady ? 'Cloud + local cache' : 'Local cache'}</strong></div>
+            <div class="sync-info-item"><span>Sinkronisasi terakhir</span><strong>${lastSyncLabel}</strong></div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-primary btn-sm" onclick="SettingsView.retrySync()" ${cloudReady ? '' : 'disabled'}>↻ Retry Sync</button>
+            <button class="btn btn-secondary btn-sm" onclick="SettingsView.exportData()">⇩ Download Backup</button>
+          </div>
+          <p style="font-size:0.78rem;color:var(--text-muted);margin-top:12px">Jika status offline berlanjut, hubungi administrator Starcom. Perubahan lokal akan dicoba disinkronkan kembali saat koneksi tersedia.</p>
         </div>
       </div>
 
@@ -110,23 +109,18 @@ const SettingsView = {
     `);
   },
 
-  saveSupabase() {
-    const url = document.getElementById('supabaseUrl').value.trim();
-    const key = document.getElementById('supabaseKey').value.trim();
-    const settings = Storage.getSettings();
-    settings.supabaseUrl = url;
-    settings.supabaseKey = key;
-    Storage.saveSettings(settings);
-    Utils.showToast('Settings saved! Refresh page to connect.', 'success');
-    document.getElementById('supabaseStatus').textContent = '✅ Saved. Reload page to activate cloud mode.';
-  },
-
-  disconnectSupabase() {
-    const settings = Storage.getSettings();
-    delete settings.supabaseUrl;
-    delete settings.supabaseKey;
-    Storage.saveSettings(settings);
-    Utils.showToast('Disconnected. Using local storage.', 'info');
-    document.getElementById('supabaseStatus').textContent = '⚠️ Disconnected — using local storage only.';
+  async retrySync() {
+    if (!DB || !DB.isCloud || !DB.isCloud()) {
+      Utils.showToast('Cloud workspace sedang tidak tersedia. Coba lagi saat koneksi pulih.', 'warning');
+      return;
+    }
+    try {
+      await Storage.flushCloudQueue();
+      await Storage.syncFromCloud();
+      Utils.showToast('Sinkronisasi berhasil diperbarui.', 'success');
+      App.navigate('#settings');
+    } catch (err) {
+      Utils.showToast('Sinkronisasi gagal. Silakan coba lagi atau hubungi administrator.', 'error');
+    }
   }
 };

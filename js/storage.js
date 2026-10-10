@@ -59,6 +59,7 @@ const Storage = {
 
   /* ---- Cloud sync: antrean persisten, retry, dan merge aman ---- */
   _queueKey: 'ep2_cloud_queue',
+  _lastSyncKey: 'ep2_last_cloud_sync',
   _syncState: 'lokal',
   _syncing: false,
   _retryTimer: null,
@@ -135,6 +136,7 @@ const Storage = {
         if (completedIndex !== -1) remaining.splice(completedIndex, 1);
         this._saveQueue(remaining);
       }
+      localStorage.setItem(this._lastSyncKey, new Date().toISOString());
       this._setSyncState('synced');
     } catch (e) {
       console.warn('Cloud sync error:', e.message);
@@ -184,7 +186,10 @@ const Storage = {
       mergedTasks.forEach(t => { if (t.location) Utils.addLocation(t.location); });
       this.saveEstimates(this._mergeByLatest(this.getEstimates(), ests));
       this.saveWbs(this._mergeByLatest(this.getWbs(), wbs));
-      if (!this._loadQueue().length) this._setSyncState('synced');
+      if (!this._loadQueue().length) {
+        localStorage.setItem(this._lastSyncKey, new Date().toISOString());
+        this._setSyncState('synced');
+      }
       console.log('📥 Data cloud berhasil digabungkan.');
     } catch(e) {
       console.warn('Cloud sync failed:', e.message);
@@ -375,12 +380,19 @@ const Storage = {
   deleteWbsItem(id) { this.saveWbs(this.getWbs().filter(w => w.id !== id)); this._cloudPush('delWbs', { id }); },
   getWbsByTask(tid) { return this.getWbs().filter(w => w.taskId === tid); },
 
-  // Settings
+  // Settings — reserved only for non-sensitive interface preferences.
   getSettings() {
     const d = { theme: 'dark' };
-    try { return {...d,...JSON.parse(localStorage.getItem('ep2_settings'))}; } catch(e) { return d; }
+    try {
+      const saved = JSON.parse(localStorage.getItem('ep2_settings')) || {};
+      const { supabaseUrl, supabaseKey, ...safeSettings } = saved;
+      return {...d, ...safeSettings};
+    } catch(e) { return d; }
   },
-  saveSettings(s) { this._save('ep2_settings', s); },
+  saveSettings(s) {
+    const { supabaseUrl, supabaseKey, ...safeSettings } = s || {};
+    this._save('ep2_settings', safeSettings);
+  },
 
   // Export / Import / Reset
   exportAll() { return { version:'2.0', exportedAt:new Date().toISOString(), requests:this.getRequests(), tasks:this.getTasks(), estimates:this.getEstimates(), wbs:this.getWbs() }; },

@@ -20,7 +20,11 @@ CREATE TABLE public.profiles (
 
 -- Auto-create profile on signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth
+AS $$
 BEGIN
   INSERT INTO public.profiles (id, email, name, role)
   VALUES (
@@ -31,7 +35,10 @@ BEGIN
   );
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
+-- Trigger-only function: prevent calls through the public Data API.
+REVOKE ALL ON FUNCTION public.handle_new_user() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.handle_new_user() TO supabase_auth_admin;
 
 CREATE OR REPLACE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
@@ -152,12 +159,17 @@ CREATE INDEX idx_estimates_task_id ON public.estimates(task_id);
 
 -- Menjaga waktu perubahan untuk mekanisme merge offline/cloud.
 CREATE OR REPLACE FUNCTION public.update_updated_at_column()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
 BEGIN
   NEW.updated_at = now();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
+-- Trigger-only function: prevent calls through the public Data API.
+REVOKE ALL ON FUNCTION public.update_updated_at_column() FROM PUBLIC, anon, authenticated;
 
 CREATE TRIGGER update_requests_updated_at BEFORE UPDATE ON public.requests
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();

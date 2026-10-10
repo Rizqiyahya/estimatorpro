@@ -1,7 +1,6 @@
 ﻿/* ============================================================
-   EstimatorPro — Supabase Client + Dual-Mode Data Layer
-   Works with localStorage (offline) OR Supabase (cloud)
-   Set SUPABASE_URL + SUPABASE_KEY in settings to activate cloud mode
+   EstimatorPro — Supabase Client + Local Cache Data Layer
+   Connection details are deployment-managed, never user-configurable.
    ============================================================ */
 
 const DB = {
@@ -10,25 +9,23 @@ const DB = {
 
   /* ---- Init ---- */
   async init() {
-    // Hardcoded Supabase config — works on any PC without manual setup
+    // Deployment-managed Supabase configuration. Never expose a service-role key in this client.
     const SUPABASE_URL = 'https://utvewmncpzibfetdfhat.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV0dmV3bW5jcHppYmZldGRmaGF0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0MzQ4NjEsImV4cCI6MjEwMTAxMDg2MX0.IQemxJvjb8ZISkAGoiFfkJoHgyIUgZK5Z6jVQfJaPbo';
 
-    // Allow Settings page override
-    const settings = Storage.getSettings();
-    const url = settings.supabaseUrl || SUPABASE_URL;
-    const key = settings.supabaseKey || SUPABASE_KEY;
+    // Legacy browser overrides are intentionally removed while safe interface preferences remain.
+    Storage.saveSettings(Storage.getSettings());
 
     try {
       if (!window.supabase) {
         await this._loadScript('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js');
       }
-      this._supabase = window.supabase.createClient(url, key);
+      this._supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       this._mode = 'supabase';
-      console.log('✅ DB mode: Supabase cloud');
+      console.log('✅ DB mode: managed cloud workspace');
       return true;
     } catch (e) {
-      console.warn('Supabase init failed, falling back to localStorage:', e.message);
+      console.warn('Managed cloud unavailable, using local cache:', e.message);
       this._mode = 'local';
       return false;
     }

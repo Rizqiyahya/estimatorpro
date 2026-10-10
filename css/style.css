@@ -506,6 +506,10 @@ td.actions{display:flex;gap:4px;justify-content:flex-end}
 .settings-section{margin-bottom:28px}
 .settings-section-title{font-family:var(--font-display);font-size:.95rem;font-weight:700;letter-spacing:-.02em;color:var(--text-primary);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border-light)}
 .settings-card{background:var(--bg-card);border:1px solid var(--border-card);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow-sm)}
+.status-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;font-size:.75rem;font-weight:700;white-space:nowrap}
+.status-badge.success{color:#047857;background:#d1fae5}.status-badge.warning{color:#a16207;background:#fef3c7}
+.sync-info-item{padding:11px 12px;border:1px solid var(--border-light);border-radius:8px;background:var(--bg-secondary)}
+.sync-info-item span{display:block;margin-bottom:4px;font-size:.72rem;color:var(--text-muted)}.sync-info-item strong{display:block;font-size:.82rem;color:var(--text-primary);line-height:1.35}
 
 /* ===== ANIMATIONS ===== */
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
