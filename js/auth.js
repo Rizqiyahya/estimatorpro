@@ -8,23 +8,63 @@ const Auth = {
     const { data: { session } } = await DB._supabase.auth.getSession();
     if (session) {
       this._user = session.user;
+      await this._loadProfile(session.user);
       if (window.Presence) window.Presence.start(session.user);
     }
-    // Keeps Presence in sync after an expired token is refreshed or when
-    // authentication changes in another tab on the same device.
+    // Keeps Presence and the database-backed role in sync after an expired
+    // token is refreshed or authentication changes in another browser tab.
     DB._supabase.auth.onAuthStateChange((event, session) => {
       if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
         this._user = session.user;
-        if (window.Presence) window.Presence.start(session.user);
+        // Do not await Supabase work inside its auth callback; refresh the
+        // profile/UI after the callback completes to avoid auth-lock issues.
+        void this._loadProfile(session.user).then(() => {
+          if (window.Presence) window.Presence.start(session.user);
+          this._refreshUI();
+        });
       }
       if (event === 'SIGNED_OUT') {
         this._user = null;
+        this._profile = null;
         if (window.Presence) window.Presence.stop();
+        this._refreshUI();
       }
     });
   },
 
   getUser() { return this._user; },
+  getProfile() { return this._profile || null; },
+
+  // Role is authoritative only when it comes from public.profiles, which is
+  // controlled by the database trigger/admin process — never browser metadata.
+  getRole() { return this._profile?.role === 'estimator' ? 'estimator' : 'manager'; },
+  getRoleLabel() { return this.getRole() === 'estimator' ? 'Estimator · PT. Starcom' : 'Manager · Read-only'; },
+
+  async _loadProfile(user = this._user) {
+    this._profile = null;
+    if (!user?.id || !DB.isCloud()) return null;
+
+    const { data, error } = await DB._supabase
+      .from('profiles')
+      .select('id, email, name, role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (error) {
+      // Fail closed in the interface. Database RLS remains the final guard.
+      console.warn('Unable to load role profile; using Manager read-only mode:', error.message);
+      return null;
+    }
+    this._profile = data || null;
+    return this._profile;
+  },
+
+  _refreshUI() {
+    if (window.App) {
+      App.setActiveNav();
+      App.renderSidebarUser();
+    }
+  },
 
   /* ---- Login Gate ---- */
   bindLoginGate() {
@@ -70,6 +110,7 @@ const Auth = {
     }
 
     this._user = data.user;
+    await this._loadProfile(data.user);
     // Ambil cloud lebih dahulu agar cache lama tidak dikirim ulang sebagai data baru.
     await Storage.syncFromCloud();
     await Storage.pushLocalToCloud();
@@ -105,6 +146,7 @@ const Auth = {
 
     if (data.user && data.session) {
       this._user = data.user;
+      await this._loadProfile(data.user);
       await Storage.syncFromCloud();
       await Storage.pushLocalToCloud();
       Storage.listenToCloud();
@@ -168,7 +210,7 @@ const Auth = {
         </div>
         <div class="form-group">
           <label class="form-label">Password</label>
-          <input type="password" class="form-input" name="password" required placeholder="Min. 6 characters" minlength="6">
+          <input type="password" class="form-input" name="password" required placeholder="Min. 10 characters" minlength="10">
         </div>
         <div id="registerError" style="color:var(--red);font-size:0.8rem;display:none"></div>
         <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:12px">
@@ -201,6 +243,7 @@ const Auth = {
     }
 
     this._user = data.user;
+    await this._loadProfile(data.user);
     // Sync: push any local data to cloud, then pull latest from cloud
     // Ambil cloud lebih dahulu agar cache lama tidak dikirim ulang sebagai data baru.
     await Storage.syncFromCloud();
@@ -236,6 +279,7 @@ const Auth = {
 
     if (data.user && data.session) {
       this._user = data.user;
+      await this._loadProfile(data.user);
       await Storage.pushLocalToCloud();
       await Storage.syncFromCloud();
       Storage.listenToCloud();
@@ -256,6 +300,7 @@ const Auth = {
     if (window.Presence) window.Presence.stop();
     await DB._supabase.auth.signOut();
     this._user = null;
+    this._profile = null;
     App.showLoginGate();
     Utils.showToast('Signed out', 'info');
     App.setActiveNav();

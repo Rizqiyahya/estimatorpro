@@ -135,9 +135,10 @@ const App = {
       const user = Auth.getUser();
       const accountButton = document.getElementById('accountButton');
       if (user && DB.isCloud()) {
+        const profile = Auth.getProfile?.();
         const email = user.email || '';
-        const name = user.user_metadata?.name || email.split('@')[0] || 'User';
-        const role = user.user_metadata?.role || 'Estimator · PT. Starcom';
+        const name = profile?.name || user.user_metadata?.name || email.split('@')[0] || 'User';
+        const role = Auth.getRoleLabel?.() || 'Manager · Read-only';
         const initial = name.charAt(0).toUpperCase();
         authArea.style.display = 'block';
         authArea.onclick = null;
