@@ -398,7 +398,11 @@ th,td{padding:12px 15px;text-align:left;font-size:.82rem;border-bottom:1px solid
 th{font-size:.68rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.075em;background:var(--bg-secondary);white-space:nowrap;position:sticky;top:0;z-index:1}
 tr:last-child td{border-bottom:none}
 tr:hover td{background:color-mix(in srgb,var(--accent) 4%,transparent)}
-td.actions{display:flex;gap:4px;justify-content:flex-end}
+/* Preserve the Actions cell as a table cell: display:flex removed its shared
+   horizontal divider, making the line beside Status appear misaligned. */
+td.actions{display:table-cell;text-align:right;white-space:nowrap;vertical-align:middle}
+td.actions .btn-icon{margin-left:4px;vertical-align:middle}
+td.actions .btn-icon:first-child{margin-left:0}
 .res-col{color:var(--text-secondary);font-size:0.8rem}
 
 /* ===== BADGES ===== */
