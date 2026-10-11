@@ -480,9 +480,9 @@ td.actions .btn-icon:first-child{margin-left:0}
   .workspace-table-container .task-table th:nth-child(15),.workspace-table-container .task-table td:nth-child(15){width:5%}
   .workspace-table-container .request-table td:not(.actions),.workspace-table-container .task-table td:not(.actions){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .workspace-table-container .request-table .tender-code-cell,.workspace-table-container .task-table .tender-code-inline{font-size:.67rem}
-  .workspace-table-container .request-table td.actions,.workspace-table-container .task-table td.actions{padding-right:6px}
-  .workspace-table-container .request-table td.actions .btn-icon,.workspace-table-container .task-table td.actions .btn-icon{width:25px;height:25px}
-  .workspace-table-container .request-table td.actions .btn-icon+.btn-icon,.workspace-table-container .task-table td.actions .btn-icon+.btn-icon{margin-left:1px}
+  .workspace-table-container .request-table td.actions,.workspace-table-container .task-table td.actions{padding-left:4px;padding-right:4px}
+  .workspace-table-container .request-table td.actions .btn-icon,.workspace-table-container .task-table td.actions .btn-icon{width:23px;height:23px}
+  .workspace-table-container .request-table td.actions .btn-icon+.btn-icon,.workspace-table-container .task-table td.actions .btn-icon+.btn-icon{margin-left:0}
 }
 .res-col{color:var(--text-secondary);font-size:0.8rem}
 
