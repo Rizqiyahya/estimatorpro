@@ -60,13 +60,6 @@
   letter-spacing: -.01em;
   white-space: nowrap;
 }
-.tender-code-copy {
-  flex: 0 0 auto;
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  border-radius: 5px;
-}
 .tender-code-pending {
   display: flex;
   align-items: flex-start;
@@ -460,16 +453,16 @@ td.actions .btn-icon:first-child{margin-left:0}
   .workspace-table-container:has(.request-table),.workspace-table-container:has(.task-table){overflow-x:hidden}
   .workspace-table-container .request-table,.workspace-table-container .task-table{width:100%;min-width:0;table-layout:fixed}
   .workspace-table-container .request-table th,.workspace-table-container .request-table td,.workspace-table-container .task-table th,.workspace-table-container .task-table td{padding:10px 8px}
-  .workspace-table-container .request-table th:nth-child(1),.workspace-table-container .request-table td:nth-child(1){width:10%}
+  .workspace-table-container .request-table th:nth-child(1),.workspace-table-container .request-table td:nth-child(1){width:8%}
   .workspace-table-container .request-table th:nth-child(2),.workspace-table-container .request-table td:nth-child(2){width:5%}
-  .workspace-table-container .request-table th:nth-child(3),.workspace-table-container .request-table td:nth-child(3){width:21%}
+  .workspace-table-container .request-table th:nth-child(3),.workspace-table-container .request-table td:nth-child(3){width:23%}
   .workspace-table-container .request-table th:nth-child(4),.workspace-table-container .request-table td:nth-child(4){width:11%}
   .workspace-table-container .request-table th:nth-child(5),.workspace-table-container .request-table td:nth-child(5){width:8%}
-  .workspace-table-container .request-table th:nth-child(6),.workspace-table-container .request-table td:nth-child(6){width:12%}
-  .workspace-table-container .request-table th:nth-child(7),.workspace-table-container .request-table td:nth-child(7){width:12%}
+  .workspace-table-container .request-table th:nth-child(6),.workspace-table-container .request-table td:nth-child(6){width:13%}
+  .workspace-table-container .request-table th:nth-child(7),.workspace-table-container .request-table td:nth-child(7){width:13%}
   .workspace-table-container .request-table th:nth-child(8),.workspace-table-container .request-table td:nth-child(8){width:7%}
   .workspace-table-container .request-table th:nth-child(9),.workspace-table-container .request-table td:nth-child(9){width:7%}
-  .workspace-table-container .request-table th:nth-child(10),.workspace-table-container .request-table td:nth-child(10){width:7%}
+  .workspace-table-container .request-table th:nth-child(10),.workspace-table-container .request-table td:nth-child(10){width:5%}
   .workspace-table-container .task-table th:nth-child(1),.workspace-table-container .task-table td:nth-child(1){width:9%}
   .workspace-table-container .task-table th:nth-child(2),.workspace-table-container .task-table td:nth-child(2){width:4%}
   .workspace-table-container .task-table th:nth-child(3),.workspace-table-container .task-table td:nth-child(3){width:15%}

@@ -145,19 +145,19 @@ const Tasks = {
       <tr data-tid="${t.id}" data-divid="${req?.division||''}" data-pipe="${t.pipelineStatus}">
         <td data-label="EP Code"><code class="tender-code-inline">${Utils.escapeHtml(req?.tenderCode||req?.tender_code||'—')}</code></td>
         <td data-label="Date">${Utils.formatDateShort(t.date)}</td>
-        <td data-label="Request">
-          <button class="workspace-request-link" type="button" onclick="Tasks.openRequest('${t.requestId}')" title="Buka request terkait">
+        <td data-label="Request" title="${Utils.escapeHtml(t.subjectRequest || req?.subject || '—')}">
+          <button class="workspace-request-link" type="button" onclick="Tasks.openRequest('${t.requestId}')" title="${Utils.escapeHtml(t.subjectRequest || req?.subject || '—')} — Buka request terkait">
             <span>${Utils.truncate(Utils.escapeHtml(t.subjectRequest || req?.subject || '—'), 32)}</span><i aria-hidden="true">↗</i>
           </button>
         </td>
-        <td data-label="Subject Task"><strong style="color:var(--text-primary)">${Utils.escapeHtml(t.subjectTask||'—')}</strong></td>
-        <td data-label="Sales">${Utils.escapeHtml(t.requestBy||'—')}</td>
-        <td data-label="Customer">${Utils.escapeHtml(t.customer||'—')}</td>
-        <td data-label="End User">${Utils.escapeHtml(t.endUser||'—')}</td>
+        <td data-label="Subject Task" title="${Utils.escapeHtml(t.subjectTask||'—')}"><strong style="color:var(--text-primary)">${Utils.escapeHtml(t.subjectTask||'—')}</strong></td>
+        <td data-label="Sales" title="${Utils.escapeHtml(t.requestBy||'—')}">${Utils.escapeHtml(t.requestBy||'—')}</td>
+        <td data-label="Customer" title="${Utils.escapeHtml(t.customer||'—')}">${Utils.escapeHtml(t.customer||'—')}</td>
+        <td data-label="End User" title="${Utils.escapeHtml(t.endUser||'—')}">${Utils.escapeHtml(t.endUser||'—')}</td>
         <td data-label="Division"><span class="badge ${Utils.divClass(req?.division)}">${req?.division||'—'}</span></td>
         <td data-label="Category">${Utils.catBadge(t.category)}</td>
         <td data-label="Scope">${scopes.join(' ')||'—'}</td>
-        <td data-label="Location">${Utils.escapeHtml(t.location||'—')}</td>
+        <td data-label="Location" title="${Utils.escapeHtml(t.location||'—')}">${Utils.escapeHtml(t.location||'—')}</td>
         <td data-label="Priority">${t.priority==='High'?'<span class="badge badge-red">High</span>':'<span class="badge badge-neutral">Normal</span>'}</td>
         <td data-label="Pipeline">${Utils.pipeBadge(t.pipelineStatus)}</td>
         <td data-label="Target">${this.targetBadge(t)}</td>

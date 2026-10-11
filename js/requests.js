@@ -21,20 +21,6 @@ const Requests = {
     return r?.tenderCode || r?.tender_code || '—';
   },
 
-  _copyTenderCode(button, code) {
-    if (!code || code === '—') return;
-    const original = button.innerHTML;
-    const done = () => {
-      button.innerHTML = '<i class="fa-solid fa-check"></i>';
-      button.title = 'Kode tersalin';
-      setTimeout(() => { button.innerHTML = original; button.title = 'Salin kode tender'; }, 1400);
-    };
-    if (navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(code).then(done).catch(() => window.prompt('Salin kode tender:', code));
-    } else {
-      window.prompt('Salin kode tender:', code);
-    }
-  },
 
   /* Click on request subject → open Tasks view filtered to this request */
   openTasksFor(reqId) {
@@ -154,16 +140,16 @@ const Requests = {
     const tc = Storage.getTasksByRequest(r.id).length;
     return `
       <tr data-rid="${r.id}" data-div="${r.division}" data-status="${r.status}">
-        <td data-label="EP Code"><div class="tender-code-cell"><code>${this._escape(this._tenderCode(r))}</code>${this._tenderCode(r) !== '—' ? `<button class="btn-icon btn-xs tender-code-copy" type="button" onclick="Requests._copyTenderCode(this, '${this._escape(this._tenderCode(r))}')" title="Salin kode tender"><i class="fa-regular fa-copy"></i></button>` : ''}</div></td>
+        <td data-label="EP Code"><div class="tender-code-cell"><code>${this._escape(this._tenderCode(r))}</code></div></td>
         <td data-label="Date">${Utils.formatDateShort(r.date)}</td>
-        <td data-label="Subject">
-          <button class="workspace-request-task-link" type="button" onclick="Requests.openTasksFor('${r.id}')" title="Lihat task dari request ini"><span>${Utils.escapeHtml(r.subject||'—')}</span><i aria-hidden="true">↗</i></button>
+        <td data-label="Subject" title="${Utils.escapeHtml(r.subject||'—')}">
+          <button class="workspace-request-task-link" type="button" onclick="Requests.openTasksFor('${r.id}')" title="${Utils.escapeHtml(r.subject||'—')} — Lihat task terkait"><span>${Utils.escapeHtml(r.subject||'—')}</span><i aria-hidden="true">↗</i></button>
           <div class="workspace-request-task-count">${tc} task${tc !== 1 ? 's' : ''} · lihat task</div>
         </td>
-        <td data-label="Email">${Utils.escapeHtml(r.emailBy||'—')}</td>
-        <td data-label="Sales">${Utils.escapeHtml(r.requestBy||'—')}</td>
-        <td data-label="Customer">${Utils.escapeHtml(r.customer||'—')}</td>
-        <td data-label="End User">${Utils.escapeHtml(r.endUser||'—')}</td>
+        <td data-label="Email" title="${Utils.escapeHtml(r.emailBy||'—')}">${Utils.escapeHtml(r.emailBy||'—')}</td>
+        <td data-label="Sales" title="${Utils.escapeHtml(r.requestBy||'—')}">${Utils.escapeHtml(r.requestBy||'—')}</td>
+        <td data-label="Customer" title="${Utils.escapeHtml(r.customer||'—')}">${Utils.escapeHtml(r.customer||'—')}</td>
+        <td data-label="End User" title="${Utils.escapeHtml(r.endUser||'—')}">${Utils.escapeHtml(r.endUser||'—')}</td>
         <td data-label="Division"><span class="badge ${Utils.divClass(r.division)}">${r.division||'—'}</span></td>
         <td data-label="Status">${Utils.reqStatusBadge(r.status)}</td>
         <td class="actions" data-label="">
