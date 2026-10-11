@@ -466,7 +466,7 @@ td.actions .btn-icon:first-child{margin-left:0}
   .workspace-table-container .task-table th:nth-child(1),.workspace-table-container .task-table td:nth-child(1){width:8%}
   .workspace-table-container .task-table th:nth-child(2),.workspace-table-container .task-table td:nth-child(2){width:4%}
   .workspace-table-container .task-table th:nth-child(3),.workspace-table-container .task-table td:nth-child(3){width:14%}
-  .workspace-table-container .task-table th:nth-child(4),.workspace-table-container .task-table td:nth-child(4){width:14%}
+  .workspace-table-container .task-table th:nth-child(4),.workspace-table-container .task-table td:nth-child(4){width:15%}
   .workspace-table-container .task-table th:nth-child(5),.workspace-table-container .task-table td:nth-child(5){width:4%}
   .workspace-table-container .task-table th:nth-child(6),.workspace-table-container .task-table td:nth-child(6){width:5%}
   .workspace-table-container .task-table th:nth-child(7),.workspace-table-container .task-table td:nth-child(7){width:5%}
@@ -476,7 +476,7 @@ td.actions .btn-icon:first-child{margin-left:0}
   .workspace-table-container .task-table th:nth-child(11),.workspace-table-container .task-table td:nth-child(11){width:4%}
   .workspace-table-container .task-table th:nth-child(12),.workspace-table-container .task-table td:nth-child(12){width:6%}
   .workspace-table-container .task-table th:nth-child(13),.workspace-table-container .task-table td:nth-child(13){width:8%}
-  .workspace-table-container .task-table th:nth-child(14),.workspace-table-container .task-table td:nth-child(14){width:5%}
+  .workspace-table-container .task-table th:nth-child(14),.workspace-table-container .task-table td:nth-child(14){width:4%}
   .workspace-table-container .task-table th:nth-child(15),.workspace-table-container .task-table td:nth-child(15){width:4%}
   .workspace-table-container .request-table td:not(.actions),.workspace-table-container .task-table td:not(.actions){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   /* Review fields must always be readable in full; Scope may wrap when it has PL, PS, and MS. */
