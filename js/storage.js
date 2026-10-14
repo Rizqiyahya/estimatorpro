@@ -9,12 +9,19 @@ const Storage = {
     return tasks.map(t => {
       const r = parents.get(t.requestId ?? t.request_id);
       if (!r) return t; // Never guess links for orphan/standalone tasks.
+      // Request owns tender identity. Task owns only its execution fields.
       const subject = r.subject ?? '';
+      const requestBy = r.requestBy !== undefined ? r.requestBy : (r.request_by ?? '');
       const customer = r.customer ?? '';
       const endUser = r.endUser !== undefined ? r.endUser : (r.end_user ?? '');
       const tenderCode = r.tenderCode !== undefined ? r.tenderCode : (r.tender_code ?? '');
-      return { ...t, subjectRequest: subject, subject_request: subject,
-        customer, endUser, end_user: endUser, tenderCode, tender_code: tenderCode };
+      return { ...t,
+        requestId: r.id, request_id: r.id,
+        subjectRequest: subject, subject_request: subject,
+        requestBy, request_by: requestBy,
+        customer, endUser, end_user: endUser,
+        tenderCode, tender_code: tenderCode
+      };
     });
   },
   _load(k) {
@@ -324,7 +331,9 @@ const Storage = {
       const oldStatus = a[i].status;
       a[i] = {...a[i],...u,updatedAt:new Date().toISOString()};
       this.saveRequests(a);
-      // Cascade status change to linked tasks
+      // Request is the source of truth for tender identity on each linked task.
+      this._cascadeTaskIdentity(a[i]);
+      // Cascade status change to linked tasks.
       const newStatus = a[i].status;
       if (newStatus !== oldStatus) {
         if (newStatus === 'lose' && oldStatus === 'open') {
@@ -340,12 +349,45 @@ const Storage = {
     return null;
   },
 
+  _taskWithRequestIdentity(task, request) {
+    const requestBy = request.requestBy !== undefined ? request.requestBy : (request.request_by ?? '');
+    const endUser = request.endUser !== undefined ? request.endUser : (request.end_user ?? '');
+    const tenderCode = request.tenderCode !== undefined ? request.tenderCode : (request.tender_code ?? '');
+    return {
+      ...task,
+      requestId: request.id, request_id: request.id,
+      subjectRequest: request.subject ?? '', subject_request: request.subject ?? '',
+      requestBy, request_by: requestBy,
+      customer: request.customer ?? '',
+      endUser, end_user: endUser,
+      tenderCode, tender_code: tenderCode
+    };
+  },
+
+  _cascadeTaskIdentity(request) {
+    const tasks = this.getTasks();
+    let changed = false;
+    const updatedTasks = tasks.map(task => {
+      if ((task.requestId ?? task.request_id) !== request.id) return task;
+      const updated = this._taskWithRequestIdentity(task, request);
+      const identityChanged = ['subjectRequest', 'requestBy', 'customer', 'endUser', 'tenderCode']
+        .some(key => task[key] !== updated[key]);
+      if (!identityChanged) return task;
+      changed = true;
+      return { ...updated, updatedAt: new Date().toISOString() };
+    });
+    if (!changed) return;
+    this.saveTasks(updatedTasks);
+    updatedTasks.filter(task => (task.requestId ?? task.request_id) === request.id)
+      .forEach(task => this._cloudPush('updTask', task));
+  },
+
   /* Cascade request status change → update all linked task pipeline status */
   _cascadeTaskStatus(requestId, newPipeline, _oldReqStatus) {
     const tasks = this.getTasks();
     let changed = false;
     tasks.forEach(t => {
-      if (t.requestId === requestId && t.pipelineStatus !== newPipeline) {
+      if ((t.requestId ?? t.request_id) === requestId && t.pipelineStatus !== newPipeline) {
         const oldTaskStatus = t.pipelineStatus;
         t.pipelineStatus = newPipeline;
         t.updatedAt = new Date().toISOString();
@@ -363,17 +405,17 @@ const Storage = {
     if (changed) {
       this.saveTasks(tasks);
       // Push each changed task to cloud
-      tasks.filter(t => t.requestId === requestId).forEach(t => {
+      tasks.filter(t => (t.requestId ?? t.request_id) === requestId).forEach(t => {
         this._cloudPush('updTask', t);
       });
     }
   },
   deleteRequest(id) {
-    const taskIds = this.getTasks().filter(t => t.requestId === id).map(t => t.id);
+    const taskIds = this.getTasks().filter(t => (t.requestId ?? t.request_id) === id).map(t => t.id);
     const estimates = this.getEstimates();
     const wbs = this.getWbs();
     this.saveRequests(this.getRequests().filter(r => r.id !== id));
-    this.saveTasks(this.getTasks().filter(t => t.requestId !== id));
+    this.saveTasks(this.getTasks().filter(t => (t.requestId ?? t.request_id) !== id));
     this.saveEstimates(estimates.filter(e => !taskIds.includes(e.taskId)));
     this.saveWbs(wbs.filter(w => !taskIds.includes(w.taskId)));
     // FK cascade di database menangani children; hapus lokal dilakukan eksplisit agar tidak ada data yatim.
@@ -385,6 +427,8 @@ const Storage = {
   saveTasks(d) { this._save('ep2_tasks', d); },
   addTask(t) {
     const a = this.getTasks();
+    const request = this.getRequests().find(r => r.id === (t.requestId ?? t.request_id));
+    t = request ? this._taskWithRequestIdentity(t, request) : t;
     t.id = Utils.genId(); t.createdAt = t.updatedAt = new Date().toISOString();
     t.category = t.category || '';
     // Initialize pipeline history
@@ -402,7 +446,11 @@ const Storage = {
     const a = this.getTasks(); const i = a.findIndex(t => t.id === id);
     if (i!==-1) {
       const oldStatus = a[i].pipelineStatus;
-      a[i] = {...a[i],...u,updatedAt:new Date().toISOString()};
+      const requestId = u.requestId ?? u.request_id ?? a[i].requestId ?? a[i].request_id;
+      const request = this.getRequests().find(r => r.id === requestId);
+      a[i] = {...a[i], ...u, requestId, updatedAt:new Date().toISOString()};
+      // A task cannot overwrite tender identity: its linked request is the source of truth.
+      if (request) a[i] = this._taskWithRequestIdentity(a[i], request);
       // Track pipeline history when status changes
       if (u.pipelineStatus && u.pipelineStatus !== oldStatus) {
         if (!a[i].pipelineHistory) a[i].pipelineHistory = [];
@@ -437,7 +485,7 @@ const Storage = {
     if (changed) this.saveTasks(tasks);
     return changed;
   },
-  getTasksByRequest(rid) { return this.getTasks().filter(t => t.requestId === rid); },
+  getTasksByRequest(rid) { return this.getTasks().filter(t => (t.requestId ?? t.request_id) === rid); },
 
   // Estimates
   getEstimates() { return this._load('ep2_estimates'); },
