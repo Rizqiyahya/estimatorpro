@@ -298,6 +298,7 @@ const Auth = {
   async logout() {
     if (!DB.isCloud()) return;
     if (window.Presence) window.Presence.stop();
+    Storage.stopCloudListeners?.();
     await DB._supabase.auth.signOut();
     this._user = null;
     this._profile = null;

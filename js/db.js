@@ -62,7 +62,7 @@ const DB = {
     const row = {
       // Keep the established local request number; PostgreSQL owns the immutable EP code.
       no_id: r.noId || 1,
-      date: r.date || new Date().toISOString().split('T')[0],
+      date: r.date || Utils.todayStr(),
       subject: r.subject || '',
       email_by: r.emailBy || '',
       request_by: r.requestBy || '',
@@ -76,9 +76,14 @@ const DB = {
       status: r.status || 'open',
       created_by: await this._getUserId()
     };
-    // Inserts force the database trigger to allocate the immutable tender code.
+    // Inserts force the database trigger to allocate the immutable EP code.
+    // Do not derive it from the form's Date Received: the code identifies when
+    // EstimatorPro registered the request, using Jakarta time in PostgreSQL.
     const { data, error } = await this._supabase.from('requests').insert(row).select().single();
     if (error) throw error;
+    if (!data?.tender_code) {
+      throw new Error('Request tersimpan, tetapi EP Code belum diterbitkan. Pastikan migrasi tender code sudah dijalankan di Supabase.');
+    }
     return { ...data, scopePL: data.scope_pl, scopePS: data.scope_ps, scopeMS: data.scope_ms, emailBy: data.email_by, requestBy: data.request_by, endUser: data.end_user, noId: data.no_id, tenderCode: data.tender_code, createdAt: data.created_at, updatedAt: data.updated_at };
   },
 

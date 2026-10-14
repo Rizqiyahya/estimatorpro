@@ -255,9 +255,10 @@ const Requests = {
     App.openModal(html, 'wide');
   },
 
-  save(e, editId) {
+  async save(e, editId) {
     e.preventDefault();
     const f = document.getElementById('reqForm');
+    const submitButton = f.querySelector('button[type="submit"]');
     const d = {
       subject:f.subject.value.trim(), date:f.date.value, emailBy:f.emailBy.value.trim(),
       requestBy:f.requestBy.value.trim(), customer:f.customer.value.trim(), endUser:f.endUser.value.trim(),
@@ -266,9 +267,41 @@ const Requests = {
     };
     if (!d.subject) return Utils.showToast('Subject wajib diisi','error');
     if (!d.division) return Utils.showToast('Division wajib dipilih','error');
-    if (editId) { Storage.updateRequest(editId,d); Utils.showToast('Request updated','success'); }
-    else { Storage.addRequest(d); Utils.showToast('Request created','success'); }
-    App.closeModal(); this.refresh(); App.setActiveNav();
+
+    if (editId) {
+      Storage.updateRequest(editId, d);
+      Utils.showToast('Request updated','success');
+      App.closeModal(); this.refresh(); App.setActiveNav();
+      return;
+    }
+
+    if (!DB.isCloud() || !Auth.getUser()) {
+      Storage.addRequest(d);
+      Utils.showToast('Request dibuat secara lokal. EP Code akan diterbitkan saat tersambung ke cloud.','info');
+      App.closeModal(); this.refresh(); App.setActiveNav();
+      return;
+    }
+
+    // Wait for PostgreSQL to return its Jakarta-time, database-issued code.
+    // This avoids rendering an empty code while the optimistic sync queue runs.
+    if (submitButton) { submitButton.disabled = true; submitButton.textContent = 'Creating…'; }
+    try {
+      const draft = { ...d, id: Utils.genId(), noId: Storage.getRequests().length + 1 };
+      const saved = await DB.addRequest(draft);
+      if (!saved?.tenderCode) {
+        throw new Error('EP Code belum diterbitkan oleh server. Silakan coba lagi.');
+      }
+      // Use the locally generated ID so linked tasks keep a stable reference.
+      const requests = Storage.getRequests();
+      requests.push({ ...draft, ...saved, id: draft.id });
+      Storage.saveRequests(requests);
+      Utils.showToast(`Request created — ${saved.tenderCode}`,'success');
+      App.closeModal(); this.refresh(); App.setActiveNav();
+    } catch (error) {
+      console.error('Unable to create request:', error);
+      Utils.showToast(error.message || 'Request gagal dibuat. Silakan coba lagi.','error');
+      if (submitButton) { submitButton.disabled = false; submitButton.textContent = 'Create Request'; }
+    }
   },
 
   openTasksFor(requestId) {

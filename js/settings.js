@@ -7,8 +7,11 @@ const SettingsView = {
     const d = Storage.exportAll();
     const cloudReady = DB && DB.isCloud && DB.isCloud();
     const lastSync = localStorage.getItem(Storage._lastSyncKey);
-    const syncLabel = cloudReady ? 'Connected' : 'Offline cache';
-    const syncClass = cloudReady ? 'success' : 'warning';
+    const signedIn = Boolean(Auth.getUser());
+    const queuedChanges = Storage._loadQueue().length;
+    const isSynced = Storage._syncState === 'synced';
+    const syncLabel = cloudReady ? (isSynced ? 'Tersinkron' : Storage._syncState === 'syncing' ? 'Menyinkronkan…' : 'Menunggu sinkronisasi') : 'Offline cache';
+    const syncClass = cloudReady && isSynced ? 'success' : 'warning';
     const lastSyncLabel = lastSync ? new Date(lastSync).toLocaleString('id-ID', { dateStyle:'medium', timeStyle:'short' }) : 'Belum ada sinkronisasi tercatat';
     const html = `
       <div class="page-header">
@@ -28,12 +31,13 @@ const SettingsView = {
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:16px 0">
             <div class="sync-info-item"><span>Mode data</span><strong>${cloudReady ? 'Cloud + local cache' : 'Local cache'}</strong></div>
             <div class="sync-info-item"><span>Sinkronisasi terakhir</span><strong>${lastSyncLabel}</strong></div>
+            <div class="sync-info-item"><span>Perubahan tertunda</span><strong>${queuedChanges} perubahan</strong></div>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-primary btn-sm" onclick="SettingsView.retrySync()" ${cloudReady ? '' : 'disabled'}>↻ Retry Sync</button>
+            <button class="btn btn-primary btn-sm" onclick="SettingsView.retrySync()" ${cloudReady && signedIn ? '' : 'disabled'}>↻ Sync sekarang</button>
             <button class="btn btn-secondary btn-sm" onclick="SettingsView.exportData()">⇩ Download Backup</button>
           </div>
-          <p style="font-size:0.78rem;color:var(--text-muted);margin-top:12px">Jika status offline berlanjut, hubungi administrator Starcom. Perubahan lokal akan dicoba disinkronkan kembali saat koneksi tersedia.</p>
+          <p style="font-size:0.78rem;color:var(--text-muted);margin-top:12px">Realtime digunakan untuk pembaruan instan. Jika Realtime terganggu, aplikasi memeriksa cloud setiap 60 detik saat halaman aktif. Perubahan lokal tetap tersimpan dan akan dicoba kembali saat koneksi tersedia.</p>
         </div>
       </div>
 
@@ -83,7 +87,7 @@ const SettingsView = {
     const blob = new Blob([json], {type:'application/json'});
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `estimatorpro_${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `estimatorpro_backup_${Utils.todayStr()}.json`;
     a.click(); URL.revokeObjectURL(a.href);
     Utils.showToast('Data exported','success');
   },
@@ -115,8 +119,7 @@ const SettingsView = {
       return;
     }
     try {
-      await Storage.flushCloudQueue();
-      await Storage.syncFromCloud();
+      await Storage.syncNow();
       Utils.showToast('Sinkronisasi berhasil diperbarui.', 'success');
       App.navigate('#settings');
     } catch (err) {

@@ -64,6 +64,17 @@ const App = {
       if (!event.target.closest('.account-wrap')) closeAccountPopover();
     });
 
+    const syncNowButton = document.getElementById('syncNowButton');
+    if (syncNowButton) syncNowButton.addEventListener('click', async () => {
+      try {
+        await Storage.syncNow();
+        Utils.showToast('Data sudah diperbarui dari cloud.', 'success');
+        this.refresh();
+      } catch (error) {
+        Utils.showToast('Belum dapat menyinkronkan data. Perubahan Anda tetap aman di perangkat.', 'warning');
+      }
+    });
+
     document.getElementById('themeToggle').addEventListener('click', () => {
       const cur = document.documentElement.getAttribute('data-theme');
       const next = cur === 'dark' ? 'light' : 'dark';
@@ -143,6 +154,9 @@ const App = {
         authArea.style.display = 'block';
         authArea.onclick = null;
         if (accountButton) accountButton.disabled = false;
+        const syncNowButton = document.getElementById('syncNowButton');
+        if (syncNowButton) syncNowButton.hidden = false;
+        Storage._setSyncState(Storage._syncState);
         document.getElementById('userName').textContent = name;
         document.getElementById('userRole').textContent = role;
         document.getElementById('userAvatar').textContent = initial;
@@ -155,6 +169,8 @@ const App = {
         document.getElementById('accountSignout').hidden = false;
       } else {
         authArea.style.display = 'none';
+        const syncNowButton = document.getElementById('syncNowButton');
+        if (syncNowButton) syncNowButton.hidden = true;
       }
     }
   },

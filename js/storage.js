@@ -91,19 +91,36 @@ const Storage = {
   _syncState: 'lokal',
   _syncing: false,
   _retryTimer: null,
+  _pollTimer: null,
+  _realtimeChannel: null,
+  _refreshIfVisible: null,
+  _syncWhenOnline: null,
+  _pollIntervalMs: 60000,
   _loadQueue() { return this._load(this._queueKey); },
   _saveQueue(queue) { this._save(this._queueKey, queue); },
   _setSyncState(state, detail = '') {
     this._syncState = state;
-    const el = document.getElementById('syncStatus');
-    if (!el) return;
     const labels = { lokal: 'Mode lokal', syncing: 'Menyinkronkan…', synced: 'Tersinkron', pending: 'Menunggu sinkronisasi', error: 'Sinkronisasi gagal' };
     const label = labels[state] || state;
-    el.textContent = label;
-    el.title = detail || label;
-    el.dataset.state = state;
+    const queued = this._loadQueue().length;
+    const lastSync = localStorage.getItem(this._lastSyncKey);
+    const lastSyncLabel = lastSync
+      ? new Date(lastSync).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+      : 'belum pernah';
+    const statusDetail = detail || `${label}. ${queued ? `${queued} perubahan menunggu.` : `Sinkron terakhir ${lastSyncLabel}.`}`;
+    const el = document.getElementById('syncStatus');
+    if (el) {
+      el.textContent = label;
+      el.title = statusDetail;
+      el.dataset.state = state;
+    }
     const accountSync = document.getElementById('accountPopoverSync');
-    if (accountSync) accountSync.textContent = label;
+    if (accountSync) accountSync.textContent = statusDetail;
+    const syncNow = document.getElementById('syncNowButton');
+    if (syncNow) {
+      syncNow.disabled = state === 'syncing' || !DB.isCloud() || !Auth.getUser();
+      syncNow.title = statusDetail;
+    }
   },
   _enqueue(op, data) {
     const queue = this._loadQueue();
@@ -225,18 +242,68 @@ const Storage = {
     }
   },
 
-  /* Realtime: listen for changes from other users */
+  async syncNow() {
+    if (!DB.isCloud() || !Auth.getUser()) {
+      this._setSyncState('lokal', 'Masuk ke cloud untuk menyinkronkan perubahan perangkat ini.');
+      throw new Error('Cloud workspace belum tersedia.');
+    }
+    this._setSyncState('syncing', 'Memeriksa perubahan lokal dan cloud…');
+    await this.flushCloudQueue();
+    const queued = this._loadQueue().length;
+    if (queued) {
+      this._setSyncState('pending', `${queued} perubahan belum dapat dikirim. Akan dicoba otomatis lagi.`);
+      throw new Error('Masih ada perubahan yang menunggu sinkronisasi.');
+    }
+    await this.syncFromCloud();
+    return this._syncState === 'synced';
+  },
+
+  startCloudFallback() {
+    if (this._pollTimer || !DB.isCloud() || !Auth.getUser()) return;
+    this._refreshIfVisible = () => {
+      if (document.visibilityState === 'visible') this.syncFromCloud();
+    };
+    this._syncWhenOnline = () => this.syncNow().catch(() => {});
+    this._pollTimer = setInterval(this._refreshIfVisible, this._pollIntervalMs);
+    window.addEventListener('online', this._syncWhenOnline);
+    document.addEventListener('visibilitychange', this._refreshIfVisible);
+    console.log('↻ Cloud fallback refresh active (60 seconds)');
+  },
+
+  stopCloudFallback() {
+    clearInterval(this._pollTimer);
+    this._pollTimer = null;
+    if (this._syncWhenOnline) window.removeEventListener('online', this._syncWhenOnline);
+    if (this._refreshIfVisible) document.removeEventListener('visibilitychange', this._refreshIfVisible);
+    this._syncWhenOnline = null;
+    this._refreshIfVisible = null;
+  },
+
+  /* Realtime is convenient, but polling keeps data fresh when Realtime is delayed. */
   listenToCloud() {
-    if (!DB.isCloud() || !DB._supabase) return;
+    if (!DB.isCloud() || !DB._supabase || this._realtimeChannel) return this._realtimeChannel;
+    const sync = () => this.syncFromCloud();
     const sub = DB._supabase
       .channel('storage-sync')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, () => this.syncFromCloud())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => this.syncFromCloud())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'estimates' }, () => this.syncFromCloud())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'wbs' }, () => this.syncFromCloud())
-      .subscribe();
-    console.log('🔄 Realtime sync active');
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, sync)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, sync)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'estimates' }, sync)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'wbs' }, sync)
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') console.log('🔄 Realtime sync active');
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.warn('Realtime unavailable; periodic cloud refresh remains active.');
+        }
+      });
+    this._realtimeChannel = sub;
+    this.startCloudFallback();
     return sub;
+  },
+
+  stopCloudListeners() {
+    this.stopCloudFallback();
+    if (this._realtimeChannel && DB._supabase) DB._supabase.removeChannel(this._realtimeChannel);
+    this._realtimeChannel = null;
   },
 
   // Requests
