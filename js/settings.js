@@ -9,6 +9,7 @@ const SettingsView = {
     const lastSync = localStorage.getItem(Storage._lastSyncKey);
     const signedIn = Boolean(Auth.getUser());
     const queuedChanges = Storage._loadQueue().length;
+    const syncError = Storage.getLastSyncError?.();
     const isSynced = Storage._syncState === 'synced';
     const syncLabel = cloudReady ? (isSynced ? 'Tersinkron' : Storage._syncState === 'syncing' ? 'Menyinkronkan…' : 'Menunggu sinkronisasi') : 'Offline cache';
     const syncClass = cloudReady && isSynced ? 'success' : 'warning';
@@ -37,6 +38,7 @@ const SettingsView = {
             <button class="btn btn-primary btn-sm" onclick="SettingsView.retrySync()" ${cloudReady && signedIn ? '' : 'disabled'}>↻ Sync sekarang</button>
             <button class="btn btn-secondary btn-sm" onclick="SettingsView.exportData()">⇩ Download Backup</button>
           </div>
+          ${syncError ? `<div class="sync-error-detail" role="status"><strong>Sinkronisasi terakhir belum selesai.</strong><span>${Utils.escapeHtml(syncError.userMessage || 'Perubahan tetap aman di perangkat.')}</span>${syncError.operation ? `<small>Operasi: ${Utils.escapeHtml(syncError.operation)} · ID data: ${Utils.escapeHtml(String(syncError.recordId || '-').slice(0, 12))}</small>` : ''}</div>` : ''}
           <p style="font-size:0.78rem;color:var(--text-muted);margin-top:12px">Realtime digunakan untuk pembaruan instan. Jika Realtime terganggu, aplikasi memeriksa cloud setiap 60 detik saat halaman aktif. Perubahan lokal tetap tersimpan dan akan dicoba kembali saat koneksi tersedia.</p>
         </div>
       </div>
@@ -118,12 +120,17 @@ const SettingsView = {
       Utils.showToast('Cloud workspace sedang tidak tersedia. Coba lagi saat koneksi pulih.', 'warning');
       return;
     }
-    try {
-      await Storage.syncNow();
+    const result = await Storage.syncNow();
+    if (result.ok) {
       Utils.showToast('Sinkronisasi berhasil diperbarui.', 'success');
       App.navigate('#settings');
-    } catch (err) {
-      Utils.showToast('Sinkronisasi gagal. Silakan coba lagi atau hubungi administrator.', 'error');
+      return;
     }
+    if (result.reason === 'busy') {
+      Utils.showToast('Sinkronisasi sedang berjalan. Mohon tunggu sebentar.', 'info');
+      return;
+    }
+    Utils.showToast(result.error?.userMessage || 'Sinkronisasi belum selesai. Perubahan tetap aman di perangkat.', 'error');
+    App.navigate('#settings');
   }
 };

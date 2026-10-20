@@ -60,7 +60,9 @@ const DB = {
   async addRequest(r) {
     if (this._mode === 'local') return Storage.addRequest(r);
     const row = {
-      // Keep the established local request number; PostgreSQL owns the immutable EP code.
+      // Keep the local UUID so queued/offline children always retain a stable request_id.
+      // PostgreSQL still owns the immutable EP code through its insert trigger.
+      ...(r.id ? { id: r.id } : {}),
       no_id: r.noId || 1,
       date: r.date || Utils.todayStr(),
       subject: r.subject || '',

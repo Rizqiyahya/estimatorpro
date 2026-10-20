@@ -95,16 +95,56 @@ const Storage = {
   /* ---- Cloud sync: antrean persisten, retry, dan merge aman ---- */
   _queueKey: 'ep2_cloud_queue',
   _lastSyncKey: 'ep2_last_cloud_sync',
+  _lastSyncErrorKey: 'ep2_last_cloud_sync_error',
   _syncState: 'lokal',
   _syncing: false,
   _retryTimer: null,
+  _retryAttempt: 0,
+  _maxRetryDelayMs: 120000,
+  _lastSyncError: null,
   _pollTimer: null,
   _realtimeChannel: null,
   _refreshIfVisible: null,
   _syncWhenOnline: null,
   _pollIntervalMs: 60000,
-  _loadQueue() { return this._load(this._queueKey); },
+  _loadQueue() {
+    const queue = this._load(this._queueKey);
+    return Array.isArray(queue) ? queue.filter(item => item && item.op && item.data && item.data.id) : [];
+  },
   _saveQueue(queue) { this._save(this._queueKey, queue); },
+  getLastSyncError() {
+    try { return JSON.parse(localStorage.getItem(this._lastSyncErrorKey) || 'null'); }
+    catch (e) { return null; }
+  },
+  _clearSyncError() {
+    this._lastSyncError = null;
+    localStorage.removeItem(this._lastSyncErrorKey);
+  },
+  _describeSyncError(error, item = null) {
+    const rawMessage = String(error?.message || error?.details || error || 'Kesalahan sinkronisasi tidak diketahui.').replace(/\s+/g, ' ').trim();
+    const code = error?.code || error?.status || '';
+    const status = Number(error?.status || 0);
+    let userMessage = rawMessage;
+    if (!navigator.onLine || /failed to fetch|networkerror|network request failed|fetch/i.test(rawMessage)) {
+      userMessage = 'Koneksi internet atau layanan cloud sedang tidak tersedia.';
+    } else if (status === 401 || /jwt expired|invalid jwt|not authenticated|session/i.test(rawMessage)) {
+      userMessage = 'Sesi cloud telah berakhir. Masuk ulang lalu coba sinkronkan kembali.';
+    } else if (status === 403 || /row-level security|permission denied|not authorized/i.test(rawMessage)) {
+      userMessage = 'Akun ini tidak memiliki izin untuk menyinkronkan perubahan tersebut.';
+    } else if (code === '23503') {
+      userMessage = 'Data induk belum tersedia di cloud. Perubahan akan dicoba ulang secara berurutan.';
+    } else if (!rawMessage) {
+      userMessage = 'Sinkronisasi belum dapat diselesaikan.';
+    }
+    return { code: String(code || ''), rawMessage, userMessage, operation: item?.op || '', recordId: item?.data?.id || '' };
+  },
+  _recordSyncError(error, item = null) {
+    const detail = { ...this._describeSyncError(error, item), at: new Date().toISOString(), queuedChanges: this._loadQueue().length };
+    this._lastSyncError = detail;
+    try { localStorage.setItem(this._lastSyncErrorKey, JSON.stringify(detail)); } catch (e) {}
+    console.warn('Cloud sync error:', { operation: detail.operation, recordId: detail.recordId, code: detail.code, message: detail.rawMessage });
+    return detail;
+  },
   _setSyncState(state, detail = '') {
     this._syncState = state;
     const labels = { lokal: 'Mode lokal', syncing: 'Menyinkronkan…', synced: 'Tersinkron', pending: 'Menunggu sinkronisasi', error: 'Sinkronisasi gagal' };
@@ -146,7 +186,9 @@ const Storage = {
   _cloudPush(op, data) {
     if (!DB.isCloud() || !Auth.getUser()) return;
     this._enqueue(op, data);
-    this.flushCloudQueue();
+    // Fire-and-forget is deliberate for local-first CRUD; flush returns a
+    // structured result and records any failure rather than leaking a rejection.
+    this.flushCloudQueue().catch(error => this._recordSyncError(error));
   },
   async _executeCloudOp(op, data) {
     try {
@@ -174,27 +216,42 @@ const Storage = {
     }
   },
   async flushCloudQueue() {
-    if (this._syncing || !DB.isCloud() || !Auth.getUser()) return;
+    if (this._syncing) return { ok: false, reason: 'busy', queued: this._loadQueue().length };
+    if (!DB.isCloud() || !Auth.getUser()) {
+      return { ok: false, reason: 'auth', queued: this._loadQueue().length };
+    }
     const queue = this._loadQueue();
-    if (!queue.length) { this._setSyncState('synced'); return; }
+    if (!queue.length) {
+      this._clearSyncError();
+      this._setSyncState('synced');
+      return { ok: true, queued: 0 };
+    }
     this._syncing = true;
     this._setSyncState('syncing');
+    let failedItem = null;
     try {
       while (this._loadQueue().length) {
         const item = this._loadQueue()[0];
+        failedItem = item;
         await this._executeCloudOp(item.op, item.data);
         const remaining = this._loadQueue();
         const completedIndex = remaining.findIndex(q => q.queuedAt === item.queuedAt && q.op === item.op && q.data.id === item.data.id);
         if (completedIndex !== -1) remaining.splice(completedIndex, 1);
         this._saveQueue(remaining);
       }
+      this._retryAttempt = 0;
+      this._clearSyncError();
       localStorage.setItem(this._lastSyncKey, new Date().toISOString());
       this._setSyncState('synced');
+      return { ok: true, queued: 0 };
     } catch (e) {
-      console.warn('Cloud sync error:', e.message);
-      this._setSyncState('error', `Perubahan tersimpan di perangkat dan akan dicoba kembali. ${e.message}`);
+      const detail = this._recordSyncError(e, failedItem);
+      this._retryAttempt += 1;
+      const delay = Math.min(15000 * (2 ** Math.min(this._retryAttempt - 1, 3)), this._maxRetryDelayMs);
+      this._setSyncState('error', `${detail.userMessage} Perubahan tetap aman di perangkat dan akan dicoba lagi.`);
       clearTimeout(this._retryTimer);
-      this._retryTimer = setTimeout(() => this.flushCloudQueue(), 15000);
+      this._retryTimer = setTimeout(() => this.flushCloudQueue(), delay);
+      return { ok: false, reason: 'queue', queued: this._loadQueue().length, error: detail, retryInMs: delay };
     } finally { this._syncing = false; }
   },
   _mergeByLatest(local, cloud) {
@@ -208,28 +265,36 @@ const Storage = {
     return [...map.values()];
   },
   async pushLocalToCloud() {
-    if (!DB.isCloud() || !Auth.getUser()) return;
-    // Hanya kirim item yang belum ada di cloud. Sebelumnya seluruh cache lokal
-    // dikirim setiap login dan menghasilkan konflik ID berulang pada estimate/WBS.
-    const queue = this._loadQueue();
-    if (!queue.length) {
-      const [cloudReqs, cloudTasks, cloudEsts, cloudWbs] = await Promise.all([
-        DB.getRequests(), DB.getTasks(), DB.getEstimates(), DB.getWbs()
-      ]);
-      const addMissing = (op, local, cloud) => {
-        const cloudIds = new Set(cloud.map(item => item.id));
-        local.filter(item => !cloudIds.has(item.id)).forEach(item => this._enqueue(op, item));
-      };
-      // Urutan menjaga parent tersedia sebelum child dikirim.
-      addMissing('addReq', this.getRequests(), cloudReqs);
-      addMissing('addTask', this.getTasks(), cloudTasks);
-      addMissing('addEst', this.getEstimates(), cloudEsts);
-      addMissing('addWbs', this.getWbs(), cloudWbs);
+    if (!DB.isCloud() || !Auth.getUser()) return { ok: false, reason: 'auth' };
+    try {
+      // Hanya kirim item yang belum ada di cloud. Sebelumnya seluruh cache lokal
+      // dikirim setiap login dan menghasilkan konflik ID berulang pada estimate/WBS.
+      const queue = this._loadQueue();
+      if (!queue.length) {
+        const [cloudReqs, cloudTasks, cloudEsts, cloudWbs] = await Promise.all([
+          DB.getRequests(), DB.getTasks(), DB.getEstimates(), DB.getWbs()
+        ]);
+        const addMissing = (op, local, cloud) => {
+          const cloudIds = new Set(cloud.map(item => item.id));
+          local.filter(item => !cloudIds.has(item.id)).forEach(item => this._enqueue(op, item));
+        };
+        // Urutan menjaga parent tersedia sebelum child dikirim.
+        addMissing('addReq', this.getRequests(), cloudReqs);
+        addMissing('addTask', this.getTasks(), cloudTasks);
+        addMissing('addEst', this.getEstimates(), cloudEsts);
+        addMissing('addWbs', this.getWbs(), cloudWbs);
+      }
+      return await this.flushCloudQueue();
+    } catch (e) {
+      const detail = this._recordSyncError(e);
+      this._setSyncState('error', `${detail.userMessage} Perubahan lokal tetap aman.`);
+      return { ok: false, reason: 'bootstrap', queued: this._loadQueue().length, error: detail };
     }
-    await this.flushCloudQueue();
   },
-  async syncFromCloud() {
-    if (!DB.isCloud() || !Auth.getUser()) return;
+  async syncFromCloud({ updateStatus = true } = {}) {
+    if (!DB.isCloud() || !Auth.getUser()) {
+      return { ok: false, reason: 'auth' };
+    }
     try {
       const [reqs, tasks, ests, wbs] = await Promise.all([DB.getRequests(), DB.getTasks(), DB.getEstimates(), DB.getWbs()]);
       this.saveRequests(this._mergeByLatest(this.getRequests(), reqs));
@@ -239,30 +304,41 @@ const Storage = {
       this.saveEstimates(this._mergeByLatest(this.getEstimates(), ests));
       this.saveWbs(this._mergeByLatest(this.getWbs(), wbs));
       if (!this._loadQueue().length) {
+        this._retryAttempt = 0;
+        this._clearSyncError();
         localStorage.setItem(this._lastSyncKey, new Date().toISOString());
-        this._setSyncState('synced');
+        if (updateStatus) this._setSyncState('synced');
       }
       console.log('📥 Data cloud berhasil digabungkan.');
+      return { ok: true };
     } catch(e) {
-      console.warn('Cloud sync failed:', e.message);
-      this._setSyncState('error', 'Tidak dapat mengambil data cloud.');
+      const detail = this._recordSyncError(e);
+      if (updateStatus) this._setSyncState('error', `${detail.userMessage} Perubahan lokal tetap aman.`);
+      return { ok: false, reason: 'download', error: detail };
     }
   },
 
   async syncNow() {
     if (!DB.isCloud() || !Auth.getUser()) {
+      const error = new Error('Cloud workspace belum tersedia.');
+      const detail = this._recordSyncError(error);
       this._setSyncState('lokal', 'Masuk ke cloud untuk menyinkronkan perubahan perangkat ini.');
-      throw new Error('Cloud workspace belum tersedia.');
+      return { ok: false, reason: 'auth', error: { ...detail, userMessage: 'Masuk ke cloud terlebih dahulu untuk menyinkronkan perubahan perangkat ini.' }, queued: this._loadQueue().length };
+    }
+    if (this._syncing) {
+      return { ok: false, reason: 'busy', queued: this._loadQueue().length };
     }
     this._setSyncState('syncing', 'Memeriksa perubahan lokal dan cloud…');
-    await this.flushCloudQueue();
-    const queued = this._loadQueue().length;
-    if (queued) {
-      this._setSyncState('pending', `${queued} perubahan belum dapat dikirim. Akan dicoba otomatis lagi.`);
-      throw new Error('Masih ada perubahan yang menunggu sinkronisasi.');
+    const push = await this.flushCloudQueue();
+    if (!push.ok) {
+      return push;
     }
-    await this.syncFromCloud();
-    return this._syncState === 'synced';
+    const pull = await this.syncFromCloud({ updateStatus: false });
+    if (!pull.ok) return pull;
+    this._clearSyncError();
+    localStorage.setItem(this._lastSyncKey, new Date().toISOString());
+    this._setSyncState('synced');
+    return { ok: true, queued: 0 };
   },
 
   startCloudFallback() {
@@ -270,7 +346,7 @@ const Storage = {
     this._refreshIfVisible = () => {
       if (document.visibilityState === 'visible') this.syncFromCloud();
     };
-    this._syncWhenOnline = () => this.syncNow().catch(() => {});
+    this._syncWhenOnline = () => { this.syncNow(); };
     this._pollTimer = setInterval(this._refreshIfVisible, this._pollIntervalMs);
     window.addEventListener('online', this._syncWhenOnline);
     document.addEventListener('visibilitychange', this._refreshIfVisible);

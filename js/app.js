@@ -66,13 +66,17 @@ const App = {
 
     const syncNowButton = document.getElementById('syncNowButton');
     if (syncNowButton) syncNowButton.addEventListener('click', async () => {
-      try {
-        await Storage.syncNow();
+      const result = await Storage.syncNow();
+      if (result.ok) {
         Utils.showToast('Data sudah diperbarui dari cloud.', 'success');
         this.refresh();
-      } catch (error) {
-        Utils.showToast('Belum dapat menyinkronkan data. Perubahan Anda tetap aman di perangkat.', 'warning');
+        return;
       }
+      if (result.reason === 'busy') {
+        Utils.showToast('Sinkronisasi sedang berjalan. Mohon tunggu sebentar.', 'info');
+        return;
+      }
+      Utils.showToast(result.error?.userMessage || 'Belum dapat menyinkronkan data. Perubahan Anda tetap aman di perangkat.', 'warning');
     });
 
     document.getElementById('themeToggle').addEventListener('click', () => {
