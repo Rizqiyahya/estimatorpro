@@ -173,12 +173,17 @@ const Storage = {
     const queue = this._loadQueue();
     const type = op.replace(/^(add|upd|del)/, '');
     const id = data.id;
-    const previous = queue.findIndex(item => item.type === type && item.data.id === id);
+    const previous = queue.findIndex(item => (item.type || item.op?.replace(/^(add|upd|del)/, '')) === type && item.data.id === id);
     const previousItem = previous !== -1 ? queue[previous] : null;
     if (previous !== -1) queue.splice(previous, 1);
     // Hapus setelah item baru belum pernah tersinkron tidak perlu dikirim ke cloud.
     if (!(op.startsWith('del') && previousItem?.op.startsWith('add'))) {
-      queue.push({ op, type, data, queuedAt: new Date().toISOString() });
+      const mergedData = previousItem?.op.startsWith('add') && !op.startsWith('add')
+        ? { ...previousItem.data, ...data }
+        : data;
+      // A new item edited before its first upload must stay an add/upsert.
+      const finalOp = previousItem?.op.startsWith('add') && op.startsWith('upd') ? previousItem.op : op;
+      queue.push({ op: finalOp, type, data: mergedData, queuedAt: new Date().toISOString() });
     }
     this._saveQueue(queue);
     this._setSyncState('pending', `${queue.length} perubahan belum tersinkron`);

@@ -81,12 +81,19 @@ const DB = {
     // Inserts force the database trigger to allocate the immutable EP code.
     // Do not derive it from the form's Date Received: the code identifies when
     // EstimatorPro registered the request, using Jakarta time in PostgreSQL.
-    const { data, error } = await this._supabase.from('requests').insert(row).select().single();
+    // Do not use `.single()` here: an INSERT may succeed but a restrictive
+    // SELECT/RLS policy can return zero visible rows, which PostgREST reports as
+    // "Cannot coerce the result to a single JSON object" and blocks the queue.
+    const { data, error } = await this._supabase.from('requests').insert(row).select();
     if (error) throw error;
-    if (!data?.tender_code) {
-      throw new Error('Request tersimpan, tetapi EP Code belum diterbitkan. Pastikan migrasi tender code sudah dijalankan di Supabase.');
+    const saved = data?.[0];
+    if (!saved?.tender_code) {
+      // The write can already be committed even when its returning row is not
+      // visible. Treat the stable-ID retry as idempotent rather than creating a
+      // duplicate request; the next cloud refresh will hydrate its EP Code.
+      return { ...r, tenderCode: r.tenderCode || '', pendingTenderCode: true };
     }
-    return { ...data, scopePL: data.scope_pl, scopePS: data.scope_ps, scopeMS: data.scope_ms, emailBy: data.email_by, requestBy: data.request_by, endUser: data.end_user, noId: data.no_id, tenderCode: data.tender_code, createdAt: data.created_at, updatedAt: data.updated_at };
+    return { ...saved, scopePL: saved.scope_pl, scopePS: saved.scope_ps, scopeMS: saved.scope_ms, emailBy: saved.email_by, requestBy: saved.request_by, endUser: saved.end_user, noId: saved.no_id, tenderCode: saved.tender_code, createdAt: saved.created_at, updatedAt: saved.updated_at };
   },
 
   async updateRequest(id, u) {
@@ -104,14 +111,17 @@ const DB = {
     if (u.scopeMS !== undefined) row.scope_ms = u.scopeMS;
     if (u.note !== undefined) row.note = u.note;
     if (u.status !== undefined) row.status = u.status;
-    const { data, error } = await this._supabase.from('requests').update(row).eq('id', id).select().single();
+    const { data, error } = await this._supabase.from('requests').update(row).eq('id', id).select();
     if (error) throw error;
+    const saved = data?.[0];
     // Database trigger is the atomic guarantee; also support deployments awaiting migration.
+    // Use the local payload as fallback if a valid UPDATE has no visible returning row.
+    const taskIdentity = saved || { subject: u.subject, customer: u.customer, end_user: u.endUser };
     const { error: syncError } = await this._supabase.from('tasks').update({
-      subject_request: data.subject, customer: data.customer, end_user: data.end_user
+      subject_request: taskIdentity.subject, customer: taskIdentity.customer, end_user: taskIdentity.end_user
     }).eq('request_id', id);
     if (syncError) throw new Error('Request tersimpan, tetapi sinkronisasi Task gagal: ' + syncError.message);
-    return data;
+    return saved || { ...u, id };
   },
 
   async deleteRequest(id) {
@@ -124,16 +134,18 @@ const DB = {
   async _inheritTaskIdentity(row, taskId) {
     let requestId = row.request_id;
     if (requestId === undefined && taskId) {
-      const { data, error } = await this._supabase.from('tasks').select('request_id').eq('id', taskId).single();
+      const { data, error } = await this._supabase.from('tasks').select('request_id').eq('id', taskId).limit(1);
       if (error) throw error;
-      requestId = data.request_id;
+      requestId = data?.[0]?.request_id;
     }
     if (!requestId) return;
-    const { data, error } = await this._supabase.from('requests').select('subject,customer,end_user').eq('id', requestId).single();
+    const { data, error } = await this._supabase.from('requests').select('subject,customer,end_user').eq('id', requestId).limit(1);
     if (error) throw error;
-    row.subject_request = data.subject;
-    row.customer = data.customer;
-    row.end_user = data.end_user;
+    const request = data?.[0];
+    if (!request) return;
+    row.subject_request = request.subject;
+    row.customer = request.customer;
+    row.end_user = request.end_user;
   },
 
   /* ---- Tasks ---- */
@@ -182,9 +194,12 @@ const DB = {
     };
     // Upsert menjaga proses bootstrap dari cache lokal tetap aman bila ID telah ada.
     await this._inheritTaskIdentity(row);
-    const { data, error } = await this._supabase.from('tasks').upsert(row, { onConflict: 'id' }).select().single();
+    const { data, error } = await this._supabase.from('tasks').upsert(row, { onConflict: 'id' }).select();
     if (error) throw error;
-    return { ...data, requestId: data.request_id, subjectRequest: data.subject_request, subjectTask: data.subject_task, requestBy: data.request_by, endUser: data.end_user, scopePL: data.scope_pl, scopePS: data.scope_ps, scopeMS: data.scope_ms, pipelineStatus: data.pipeline_status, boqLink: data.boq_link, category: data.category, pipelineHistory: data.pipeline_history };
+    const saved = data?.[0];
+    return saved
+      ? { ...saved, requestId: saved.request_id, subjectRequest: saved.subject_request, subjectTask: saved.subject_task, requestBy: saved.request_by, endUser: saved.end_user, scopePL: saved.scope_pl, scopePS: saved.scope_ps, scopeMS: saved.scope_ms, pipelineStatus: saved.pipeline_status, boqLink: saved.boq_link, category: saved.category, pipelineHistory: saved.pipeline_history }
+      : t;
   },
 
   async updateTask(id, u) {
@@ -200,9 +215,12 @@ const DB = {
       else if (['date', 'customer', 'location', 'priority'].includes(k)) row[k] = v;
     }
     await this._inheritTaskIdentity(row, id);
-    const { data, error } = await this._supabase.from('tasks').update(row).eq('id', id).select().single();
+    const { data, error } = await this._supabase.from('tasks').update(row).eq('id', id).select();
     if (error) throw error;
-    return { ...data, requestId: data.request_id, subjectRequest: data.subject_request, subjectTask: data.subject_task, requestBy: data.request_by, endUser: data.end_user, scopePL: data.scope_pl, scopePS: data.scope_ps, scopeMS: data.scope_ms, pipelineStatus: data.pipeline_status, boqLink: data.boq_link, category: data.category, pipelineHistory: data.pipeline_history };
+    const saved = data?.[0];
+    return saved
+      ? { ...saved, requestId: saved.request_id, subjectRequest: saved.subject_request, subjectTask: saved.subject_task, requestBy: saved.request_by, endUser: saved.end_user, scopePL: saved.scope_pl, scopePS: saved.scope_ps, scopeMS: saved.scope_ms, pipelineStatus: saved.pipeline_status, boqLink: saved.boq_link, category: saved.category, pipelineHistory: saved.pipeline_history }
+      : { ...u, id };
   },
 
   async deleteTask(id) {
@@ -239,9 +257,12 @@ const DB = {
       notes: e.notes || '', created_by: await this._getUserId()
     };
     // Upsert berdasarkan ID membuat pengiriman ulang antrean offline idempoten.
-    const { data, error } = await this._supabase.from('estimates').upsert(row, { onConflict: 'id' }).select().single();
+    const { data, error } = await this._supabase.from('estimates').upsert(row, { onConflict: 'id' }).select();
     if (error) throw error;
-    return { ...data, taskId: data.task_id, unitPrice: data.unit_price, totalPrice: data.total_price };
+    const saved = data?.[0];
+    return saved
+      ? { ...saved, taskId: saved.task_id, unitPrice: saved.unit_price, totalPrice: saved.total_price }
+      : e;
   },
 
   async updateEstimate(id, u) {
@@ -252,9 +273,12 @@ const DB = {
       if (map[k]) row[map[k]] = v;
       else if (['item', 'category', 'quantity', 'unit', 'notes'].includes(k)) row[k] = v;
     }
-    const { data, error } = await this._supabase.from('estimates').update(row).eq('id', id).select().single();
+    const { data, error } = await this._supabase.from('estimates').update(row).eq('id', id).select();
     if (error) throw error;
-    return { ...data, taskId: data.task_id, unitPrice: data.unit_price, totalPrice: data.total_price };
+    const saved = data?.[0];
+    return saved
+      ? { ...saved, taskId: saved.task_id, unitPrice: saved.unit_price, totalPrice: saved.total_price }
+      : { ...u, id };
   },
 
   async deleteEstimate(id) {
@@ -293,9 +317,12 @@ const DB = {
       seq: w.seq || 0, created_by: await this._getUserId()
     };
     // Upsert berdasarkan ID membuat pengiriman ulang antrean offline idempoten.
-    const { data, error } = await this._supabase.from('wbs').upsert(row, { onConflict: 'id' }).select().single();
+    const { data, error } = await this._supabase.from('wbs').upsert(row, { onConflict: 'id' }).select();
     if (error) throw error;
-    return { ...data, taskId: data.task_id, parentId: data.parent_id, startDate: data.start_date, durationDays: data.duration_days };
+    const saved = data?.[0];
+    return saved
+      ? { ...saved, taskId: saved.task_id, parentId: saved.parent_id, startDate: saved.start_date, durationDays: saved.duration_days }
+      : w;
   },
 
   async updateWbsItem(id, u) {
@@ -306,9 +333,12 @@ const DB = {
       if (map[k]) row[map[k]] = v;
       else if (['name', 'level', 'seq'].includes(k)) row[k] = v;
     }
-    const { data, error } = await this._supabase.from('wbs').update(row).eq('id', id).select().single();
+    const { data, error } = await this._supabase.from('wbs').update(row).eq('id', id).select();
     if (error) throw error;
-    return { ...data, taskId: data.task_id, parentId: data.parent_id, startDate: data.start_date, durationDays: data.duration_days };
+    const saved = data?.[0];
+    return saved
+      ? { ...saved, taskId: saved.task_id, parentId: saved.parent_id, startDate: saved.start_date, durationDays: saved.duration_days }
+      : { ...u, id };
   },
 
   async deleteWbsItem(id) {
