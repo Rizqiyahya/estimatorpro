@@ -284,7 +284,17 @@ const Tasks = {
         </div>
         <div class="form-row">
           <div class="form-group"><label class="form-label">End User</label><input type="text" class="form-input" name="endUser" id="taskEndUser" value="${Utils.escapeHtml(task?.endUser||'')}" readonly style="opacity:0.7"></div>
-          <div class="form-group"><label class="form-label">Location / Site</label><input type="text" class="form-input" name="location" list="locList" value="${Utils.escapeHtml(task?.location||'')}" placeholder="e.g. Jakarta">${Utils.locationDatalist("locList")}</div>
+          <div class="form-group location-master-field">
+            <label class="form-label">Lokasi Proyek / Site</label>
+            <input type="hidden" name="location" id="taskLocationValue" value="${Utils.escapeHtml(task?.location||'')}">
+            <div class="location-master-grid">
+              <select class="form-select" id="taskProvince" aria-label="Provinsi"><option value="">Memuat provinsi…</option></select>
+              <select class="form-select" id="taskRegency" aria-label="Kabupaten atau kota" disabled><option value="">Pilih provinsi dahulu</option></select>
+              <select class="form-select" id="taskDistrict" aria-label="Kecamatan" disabled><option value="">Pilih kabupaten/kota dahulu</option></select>
+            </div>
+            <input type="text" class="form-input location-site-detail" id="taskLocationDetail" value="${Utils.escapeHtml(task?.location||'')}" placeholder="Nama site, alamat, atau lokasi khusus (opsional)">
+            <div class="form-hint" id="taskLocationHint">Pilih Provinsi → Kabupaten/Kota → Kecamatan. Lokasi khusus tetap dapat diketik.</div>
+          </div>
         </div>
         <div class="form-row">
           <div class="form-group">
@@ -332,6 +342,87 @@ const Tasks = {
         </div>
       </form>`;
     App.openModal(html, 'wide');
+    this.initLocationMaster(document.getElementById('modalOverlay'), task?.location || '');
+  },
+
+  async initLocationMaster(modal, existingLocation = '') {
+    const provinceSelect = modal?.querySelector('#taskProvince');
+    const regencySelect = modal?.querySelector('#taskRegency');
+    const districtSelect = modal?.querySelector('#taskDistrict');
+    const detailInput = modal?.querySelector('#taskLocationDetail');
+    const storedInput = modal?.querySelector('#taskLocationValue');
+    const hint = modal?.querySelector('#taskLocationHint');
+    if (!provinceSelect || !regencySelect || !districtSelect || !storedInput) return;
+
+    const setOptions = (select, placeholder, items, getValue, getLabel) => {
+      select.innerHTML = `<option value="">${Utils.escapeHtml(placeholder)}</option>` + items
+        .map(item => `<option value="${Utils.escapeHtml(getValue(item))}">${Utils.escapeHtml(getLabel(item))}</option>`).join('');
+    };
+    const optionLabel = select => select.selectedOptions[0]?.textContent || '';
+    const clean = value => value && !/^(Pilih|Memuat)/.test(value) ? value : '';
+    const updateLocation = () => {
+      const detail = detailInput.value.trim();
+      const selected = Locations.formatSelection({
+        province: clean(optionLabel(provinceSelect)),
+        regency: clean(optionLabel(regencySelect)),
+        district: clean(optionLabel(districtSelect)),
+        detail
+      });
+      storedInput.value = selected || detail || existingLocation || '';
+      if (hint) hint.textContent = storedInput.value
+        ? `Lokasi tersimpan: ${storedInput.value}`
+        : 'Pilih Provinsi → Kabupaten/Kota → Kecamatan. Lokasi khusus tetap dapat diketik.';
+    };
+
+    try {
+      const master = await Locations.load();
+      if (!master.districts.length) throw new Error('master kosong');
+      const match = Locations.findByLocation(existingLocation);
+      const provinces = await Locations.provinces();
+      setOptions(provinceSelect, 'Pilih provinsi', provinces, item => item.code, item => item.name);
+      if (match) provinceSelect.value = match.provinceCode;
+
+      const fillRegencies = async (selectedCode = '') => {
+        const regencies = await Locations.regencies(provinceSelect.value);
+        setOptions(regencySelect, 'Pilih kabupaten/kota', regencies, item => item.code, item => item.name);
+        regencySelect.disabled = !provinceSelect.value;
+        if (selectedCode) regencySelect.value = selectedCode;
+      };
+      const fillDistricts = async (selectedCode = '') => {
+        const districts = await Locations.districts(regencySelect.value);
+        setOptions(districtSelect, 'Pilih kecamatan', districts, item => item.districtCode, item => item.district);
+        districtSelect.disabled = !regencySelect.value;
+        if (selectedCode) districtSelect.value = selectedCode;
+      };
+
+      await fillRegencies(match?.regencyCode || '');
+      await fillDistricts(match?.districtCode || '');
+      if (match) detailInput.value = '';
+      updateLocation();
+      const clearLegacyDetail = () => {
+        if (detailInput.value === existingLocation) detailInput.value = '';
+      };
+      provinceSelect.addEventListener('change', async () => {
+        clearLegacyDetail();
+        await fillRegencies(); await fillDistricts(); updateLocation();
+      });
+      regencySelect.addEventListener('change', async () => {
+        clearLegacyDetail();
+        await fillDistricts(); updateLocation();
+      });
+      districtSelect.addEventListener('change', updateLocation);
+      detailInput.addEventListener('input', updateLocation);
+    } catch (error) {
+      console.warn('Location master form fallback:', error.message);
+      provinceSelect.style.display = 'none';
+      regencySelect.style.display = 'none';
+      districtSelect.style.display = 'none';
+      storedInput.type = 'text';
+      storedInput.className = 'form-input';
+      storedInput.placeholder = 'Contoh: Jakarta atau nama site proyek';
+      if (detailInput) detailInput.style.display = 'none';
+      if (hint) hint.textContent = 'Master lokasi belum tersedia. Anda tetap dapat mengetik lokasi bebas.';
+    }
   },
 
   onReqChange(reqId) {
