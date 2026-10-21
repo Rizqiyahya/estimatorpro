@@ -112,6 +112,27 @@ const Storage = {
     return Array.isArray(queue) ? queue.filter(item => item && item.op && item.data && item.data.id) : [];
   },
   _saveQueue(queue) { this._save(this._queueKey, queue); },
+  _isMissingParentError(error) {
+    return error?.code === '23503' || /foreign key|violates.*constraint/i.test(String(error?.message || error || ''));
+  },
+  _nextQueueItem(queue) {
+    // Preserve Request → Task → child ordering. If an older queue was created
+    // in a different order, send a parent-free item first instead of failing
+    // immediately on a child foreign key.
+    const queuedRequestIds = new Set(queue.filter(item => item.op === 'addReq').map(item => item.data.id));
+    const queuedTaskIds = new Set(queue.filter(item => item.op === 'addTask').map(item => item.data.id));
+    return queue.find(item => {
+      if (item.op === 'addTask') return !item.data.requestId || !queuedRequestIds.has(item.data.requestId);
+      if (item.op === 'addEst' || item.op === 'addWbs') return !item.data.taskId || !queuedTaskIds.has(item.data.taskId);
+      return true;
+    }) || queue[0];
+  },
+  _removeQueuedItem(item) {
+    const remaining = this._loadQueue();
+    const completedIndex = remaining.findIndex(q => q.queuedAt === item.queuedAt && q.op === item.op && q.data.id === item.data.id);
+    if (completedIndex !== -1) remaining.splice(completedIndex, 1);
+    this._saveQueue(remaining);
+  },
   getLastSyncError() {
     try { return JSON.parse(localStorage.getItem(this._lastSyncErrorKey) || 'null'); }
     catch (e) { return null; }
@@ -236,13 +257,10 @@ const Storage = {
     let failedItem = null;
     try {
       while (this._loadQueue().length) {
-        const item = this._loadQueue()[0];
+        const item = this._nextQueueItem(this._loadQueue());
         failedItem = item;
         await this._executeCloudOp(item.op, item.data);
-        const remaining = this._loadQueue();
-        const completedIndex = remaining.findIndex(q => q.queuedAt === item.queuedAt && q.op === item.op && q.data.id === item.data.id);
-        if (completedIndex !== -1) remaining.splice(completedIndex, 1);
-        this._saveQueue(remaining);
+        this._removeQueuedItem(item);
       }
       this._retryAttempt = 0;
       this._clearSyncError();

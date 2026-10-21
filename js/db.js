@@ -78,13 +78,20 @@ const DB = {
       status: r.status || 'open',
       created_by: await this._getUserId()
     };
+    // A retry must preserve the EP code already assigned to the local record.
+    // The insert trigger only generates a code when this value is empty.
+    if (r.tenderCode) row.tender_code = r.tenderCode;
     // Inserts force the database trigger to allocate the immutable EP code.
     // Do not derive it from the form's Date Received: the code identifies when
     // EstimatorPro registered the request, using Jakarta time in PostgreSQL.
     // Do not use `.single()` here: an INSERT may succeed but a restrictive
     // SELECT/RLS policy can return zero visible rows, which PostgREST reports as
     // "Cannot coerce the result to a single JSON object" and blocks the queue.
-    const { data, error } = await this._supabase.from('requests').insert(row).select();
+    // Upsert by the stable local UUID makes retries idempotent. It is essential
+    // for an older queued INSERT that reached Postgres successfully but failed
+    // while reading its returning payload: retrying must not become a duplicate
+    // key error that blocks every later queued change.
+    const { data, error } = await this._supabase.from('requests').upsert(row, { onConflict: 'id' }).select();
     if (error) throw error;
     const saved = data?.[0];
     if (!saved?.tender_code) {
